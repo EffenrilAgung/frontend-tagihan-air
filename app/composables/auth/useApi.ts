@@ -4,7 +4,13 @@
  */
 export function useApi() {
     const config = useRuntimeConfig()
-    const baseUrl = config.public.apiBaseUrl as string
+    const baseUrl = (config.public.apiBaseUrl as string)?.replace(/\/$/, '') ?? ''
+
+    if (!baseUrl) {
+        throw new Error(
+            '[useApi] NUXT_PUBLIC_API_BASE_URL belum diatur. Salin .env.example ke .env dan isi URL API backend.',
+        )
+    }
 
     /**
      * Get the auth token from localStorage

@@ -48,10 +48,10 @@ export default defineNuxtConfig({
     ]
   },
 
-  // API base URL for Laravel backend
+  // API Laravel: set NUXT_PUBLIC_API_BASE_URL di .env (lihat .env.example)
   runtimeConfig: {
     public: {
-      apiBaseUrl: process.env.NUXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api'
+      apiBaseUrl: process.env.NUXT_PUBLIC_API_BASE_URL ?? ''
     }
   }
 })
