@@ -142,9 +142,9 @@ const openEdit = async (id: number) => {
         showPopup.value = true;
     } catch (error) {
         console.error('Gagal memuat data tarif untuk edit:', error);
+        toast.error('Gagal memuat data tarif');
     }
 };
-console.log('Selected Tarif for Edit:', selectedTarif.value);
 
 const closePopup = () => {
     showPopup.value = false;
@@ -163,7 +163,7 @@ const saveTarif = (tarifId: number | null, form: TarifForm) => {
             }
         }).catch((error) => {
             console.error('Gagal memperbarui tarif:', error);
-            // TODO: tampilkan notifikasi error ke user
+            toast.error('Gagal memperbarui tarif');
         }).finally(() => {
             closePopup();
         });
@@ -175,7 +175,7 @@ const saveTarif = (tarifId: number | null, form: TarifForm) => {
             }
         }).catch((error) => {
             console.error('Gagal menambahkan tarif baru:', error);
-            // TODO: tampilkan notifikasi error ke user
+            toast.error('Gagal menambahkan tarif baru');
         }).finally(() => {
             closePopup();
         });
@@ -220,7 +220,7 @@ onMounted(async () => {
         tarifs.value = data
     } catch (error) {
         console.error('Gagal memuat data tarif:', error)
-        // TODO: tampilkan notifikasi error ke user
+        toast.error('Gagal memuat data tarif')
     } finally {
         loading.value = false
     }

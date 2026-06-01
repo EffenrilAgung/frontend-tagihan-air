@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { cn } from '@/lib/utils'
 
 interface Props {
   title: string
@@ -18,22 +19,22 @@ const formattedValue = computed(() => {
 })
 
 const valueClass = computed(() => {
-  if (props.isDifference) {
-    if (typeof props.value === 'number') {
-      return props.value >= 0 ? 'text-green-500' : 'text-red-500'
-    }
+  if (props.isDifference && typeof props.value === 'number') {
+    return props.value >= 0 ? 'text-emerald-600' : 'text-red-600'
   }
-  return 'text-slate-900 dark:text-white'
+  return 'text-emerald-600 dark:text-emerald-400'
 })
 </script>
 
 <template>
   <Card>
     <CardHeader class="pb-2">
-      <CardTitle class="text-sm font-medium text-slate-500 dark:text-slate-400">{{ title }}</CardTitle>
+      <CardTitle class="text-sm font-medium text-muted-foreground">{{ title }}</CardTitle>
     </CardHeader>
     <CardContent>
-      <div class="text-xl font-bold sm:text-2xl" :class="valueClass">{{ formattedValue }}</div>
+      <div :class="cn('text-xl font-bold sm:text-2xl', valueClass)">
+        {{ formattedValue }}
+      </div>
     </CardContent>
   </Card>
 </template>

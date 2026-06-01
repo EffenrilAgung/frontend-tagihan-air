@@ -1,4 +1,5 @@
 import { useApi } from '~/composables/auth/useApi'
+import { unwrapListData } from '~/utils/api-response'
 import type { ResponseWithServer } from '~/types/response-server'
 import type { PencatatanMeter, PencatatanMeterForm, PencatatanMeterRaw } from '~/types/pencatatan-meter'
 
@@ -15,8 +16,7 @@ export const usePencatatanMeterCore = () => {
             throw new Error(response.message || 'Gagal mengambil data pencatatan meter')
         }
 
-        const rawData = Array.isArray(response.data) ? response.data : (response.data as any).data ?? []
-        return rawData.map((item: PencatatanMeterRaw) => ({
+        return unwrapListData<PencatatanMeterRaw>(response.data).map((item) => ({
             ...item,
             created_at: new Date(item.created_at),
             updated_at: new Date(item.updated_at),
@@ -51,7 +51,6 @@ export const usePencatatanMeterCore = () => {
     const updatePencatatanMeter = async (id: number, form: PencatatanMeterForm): Promise<ResponseWithServer<PencatatanMeter>> => {
         // Use POST with _method=PUT for FormData file upload support
         const formData = new FormData()
-        formData.append('_method', 'PUT')
         formData.append('pelanggan_id', String(form.pelanggan_id))
         formData.append('tanggal_pencatatan', form.tanggal_pencatatan)
         formData.append('meter_awal', String(form.meter_awal))
@@ -60,7 +59,7 @@ export const usePencatatanMeterCore = () => {
             formData.append('foto_meteran', form.foto_meteran)
         }
 
-        const response = await api.post<PencatatanMeter>(`/pencatatan-meter/${id}`, formData)
+        const response = await api.put<PencatatanMeter>(`/pencatatan-meter/${id}`, formData)
 
         if (!response.success || !response.data) {
             throw { ...response, message: response.message || 'Gagal memperbarui pencatatan meter' }

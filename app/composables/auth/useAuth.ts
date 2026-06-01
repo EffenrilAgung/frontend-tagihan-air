@@ -1,6 +1,6 @@
 import type { Ref } from 'vue'
 import { toast } from 'vue-sonner'
-import type { User, AuthState, LoginResponse } from '../../types/users'
+import type { User, AuthState, LoginResponse, ProfileUpdateForm } from '../../types/users'
 import { useApi } from './useApi'
 
 /**
@@ -11,27 +11,11 @@ import { useApi } from './useApi'
  */
 export function useAuth() {
     // ---- Reactive state ----
-    const user: Ref<User | null> = useState<User | null>('auth_user', () => {
-        // Hydrate from localStorage on first access (client-side only)
-        if (import.meta.client) {
-            const raw = localStorage.getItem('auth_user')
-            if (raw) {
-                try {
-                    return JSON.parse(raw) as User
-                } catch {
-                    localStorage.removeItem('auth_user')
-                }
-            }
-        }
-        return null
-    })
+    // Inisialisasi null di server & client agar HTML SSR cocok saat hydration.
+    // localStorage dibaca di plugin auth.client.ts setelah mount.
+    const user: Ref<User | null> = useState<User | null>('auth_user', () => null)
 
-    const token: Ref<string | null> = useState<string | null>('auth_token', () => {
-        if (import.meta.client) {
-            return localStorage.getItem('auth_token')
-        }
-        return null
-    })
+    const token: Ref<string | null> = useState<string | null>('auth_token', () => null)
 
     const isAuthenticated = computed(() => !!token.value && !!user.value)
 
@@ -42,6 +26,13 @@ export function useAuth() {
         if (import.meta.client) {
             localStorage.setItem('auth_token', state.token ?? '')
             localStorage.setItem('auth_user', JSON.stringify(state.user))
+        }
+    }
+
+    function persistUser(updated: User): void {
+        user.value = updated
+        if (import.meta.client) {
+            localStorage.setItem('auth_user', JSON.stringify(updated))
         }
     }
 
@@ -102,15 +93,49 @@ export function useAuth() {
             const api = useApi()
             const res = await api.get<User>('/profile')
             if (res.success && res.data) {
-                user.value = res.data
-                if (import.meta.client) {
-                    localStorage.setItem('auth_user', JSON.stringify(res.data))
-                }
+                persistUser(res.data)
             }
         } catch {
             // Token is invalid/expired — clear auth
             clearAuth()
         }
+    }
+
+    /**
+     * Update profile (nama, email, optional password, foto).
+     */
+    async function updateProfile(
+        form: ProfileUpdateForm,
+        options?: { foto?: File | null; removeFoto?: boolean },
+    ): Promise<User> {
+        const api = useApi()
+        const formData = new FormData()
+        formData.append('nama', form.nama.trim())
+        formData.append('email', form.email.trim())
+
+        if (form.password?.trim()) {
+            formData.append('current_password', form.current_password ?? '')
+            formData.append('password', form.password)
+            formData.append('password_confirmation', form.password_confirmation ?? '')
+        }
+
+        if (options?.removeFoto) {
+            formData.append('remove_foto', '1')
+        }
+
+        if (options?.foto) {
+            formData.append('foto_profil', options.foto)
+        }
+
+        const res = await api.put<User>('/profile', formData)
+
+        if (!res.success || !res.data) {
+            throw new Error(res.message || 'Gagal memperbarui profil')
+        }
+
+        persistUser(res.data)
+        toast.success(res.message || 'Profil berhasil diperbarui')
+        return res.data
     }
 
     return {
@@ -120,5 +145,6 @@ export function useAuth() {
         login,
         logout,
         fetchProfile,
+        updateProfile,
     }
 }

@@ -67,7 +67,16 @@ export function useApi() {
 
         const response = await fetch(url, options)
 
-        const json = await response.json()
+        let json: Record<string, unknown>
+        try {
+            json = await response.json()
+        } catch {
+            throw {
+                status: response.status,
+                message: `Respons server tidak valid (${response.status})`,
+                errors: null,
+            }
+        }
 
         if (!response.ok) {
             // Laravel validation errors: { message, errors: { field: [...] } }

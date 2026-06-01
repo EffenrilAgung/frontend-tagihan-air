@@ -1,4 +1,5 @@
 import { useApi } from '~/composables/auth/useApi'
+import { unwrapListData } from '~/utils/api-response'
 import type { Pembayaran, PembayaranForm, UnpaidBill } from '~/types/billing'
 
 export const useBillingCore = () => {
@@ -12,7 +13,7 @@ export const useBillingCore = () => {
         if (!response.success || !response.data) {
             throw new Error(response.message || 'Gagal mengambil data pembayaran')
         }
-        return Array.isArray(response.data) ? response.data : (response.data as any).data ?? []
+        return unwrapListData<Pembayaran>(response.data)
     }
 
     /**
@@ -58,7 +59,7 @@ export const useBillingCore = () => {
         if (!response.success || !response.data) {
             throw new Error(response.message || 'Gagal mengambil tagihan belum dibayar')
         }
-        return Array.isArray(response.data) ? response.data : (response.data as any).data ?? []
+        return unwrapListData<UnpaidBill>(response.data)
     }
 
     /**
@@ -70,7 +71,7 @@ export const useBillingCore = () => {
         if (!response.success || !response.data) {
             throw new Error(response.message || 'Gagal mengambil laporan pembayaran')
         }
-        return Array.isArray(response.data) ? response.data : (response.data as any).data ?? []
+        return unwrapListData<Pembayaran>(response.data)
     }
 
     /**
@@ -81,7 +82,7 @@ export const useBillingCore = () => {
         if (!response.success || !response.data) {
             throw new Error(response.message || 'Gagal mengambil riwayat pembayaran')
         }
-        return Array.isArray(response.data) ? response.data : (response.data as any).data ?? []
+        return unwrapListData<Pembayaran>(response.data)
     }
 
     return {

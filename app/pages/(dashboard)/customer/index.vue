@@ -107,6 +107,7 @@ import type { Tarif } from '~/types/tarif';
 import CustomerPopup from './components/popup.vue';
 import { useCustomerCore } from '~/composables/customer/useCostumer';
 import { useTarifCore } from '~/composables/tarif/useTarif';
+import { formatCurrency, formatDate } from '~/utils/utils'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -241,6 +242,7 @@ onMounted(async () => {
     pelanggans.value = data
   } catch (error) {
     console.error('Gagal memuat data:', error)
+    toast.error('Gagal memuat data pelanggan')
   } finally {
     loading.value = false
   }

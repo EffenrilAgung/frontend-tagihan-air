@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { Droplet, Eye, EyeOff, Loader2 } from 'lucide-vue-next'
+import { Droplet, Eye, EyeOff, Loader2, AlertCircle } from 'lucide-vue-next'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
@@ -77,12 +77,7 @@ async function handleLogin() {
         <div v-if="errorMessage" class="px-8 pb-4">
           <div
             class="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" x2="12" y1="8" y2="12" />
-              <line x1="12" x2="12.01" y1="16" y2="16" />
-            </svg>
+            <AlertCircle class="size-4 shrink-0" />
             <span>{{ errorMessage }}</span>
           </div>
         </div>

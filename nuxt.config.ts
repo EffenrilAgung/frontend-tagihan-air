@@ -22,16 +22,28 @@ export default defineNuxtConfig({
      */
     prefix: '',
     /**
-     * Directory that the component lives in.
-     * @default "./components/ui"
+     * Nuxt 4: komponen shadcn ada di app/components/ui
      */
-    componentDir: './components/ui'
+    componentDir: './app/components/ui',
   },
 
   vite: {
     plugins: [
       tailwindcss()
     ],
+    optimizeDeps: {
+      include: [
+        '@vue/devtools-core',
+        '@vue/devtools-kit',
+        '@vueuse/core',
+        'class-variance-authority',
+        'clsx',
+        'lucide-vue-next',
+        'reka-ui',
+        'tailwind-merge',
+        'vue-sonner',
+      ],
+    },
   },
 
   // Enable pages mode
@@ -51,7 +63,7 @@ export default defineNuxtConfig({
   // API Laravel: set NUXT_PUBLIC_API_BASE_URL di .env (lihat .env.example)
   runtimeConfig: {
     public: {
-      apiBaseUrl: process.env.NUXT_PUBLIC_API_BASE_URL ?? ''
+      apiBaseUrl: process.env.NUXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000/api'
     }
   }
 })

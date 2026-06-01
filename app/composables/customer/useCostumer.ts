@@ -1,4 +1,5 @@
 import { useApi } from '~/composables/auth/useApi'
+import { unwrapListData } from '~/utils/api-response'
 import type { ResponseWithServer } from '~/types/response-server'
 import type { Pelanggan, PelangganForm, PelangganRaw } from '~/types/customers'
 
@@ -17,8 +18,7 @@ export const useCustomerCore = () => {
         }
 
         // Parse raw dates into Date objects
-        const rawData = Array.isArray(response.data) ? response.data : (response.data as any).data ?? []
-        return rawData.map((item: PelangganRaw) => ({
+        return unwrapListData<PelangganRaw>(response.data).map((item) => ({
             ...item,
             created_at: new Date(item.created_at),
             updated_at: new Date(item.updated_at),

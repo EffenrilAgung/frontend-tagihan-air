@@ -20,3 +20,11 @@ export interface AuthState {
     user: User | null
     token: string | null
 }
+
+export interface ProfileUpdateForm {
+    nama: string
+    email: string
+    current_password?: string
+    password?: string
+    password_confirmation?: string
+}

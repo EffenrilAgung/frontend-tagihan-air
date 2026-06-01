@@ -1,7 +1,15 @@
-
 import { useApi } from '~/composables/auth/useApi'
+import { unwrapListData } from '~/utils/api-response'
 import type { ResponseWithServer } from '~/types/response-server'
-import type { Tarif, TarifForm } from '~/types/tarif'
+import type { Tarif, TarifForm, TarifRaw } from '~/types/tarif'
+
+function mapTarif(raw: TarifRaw): Tarif {
+    return {
+        ...raw,
+        created_at: new Date(raw.created_at),
+        updated_at: new Date(raw.updated_at),
+    }
+}
 
 export const useTarifCore = () => {
     const api = useApi()
@@ -17,7 +25,7 @@ export const useTarifCore = () => {
             throw new Error(response.message || 'Gagal mengambil data tarif')
         }
 
-        return response.data
+        return unwrapListData<TarifRaw>(response.data).map(mapTarif)
     }
 
     /**
