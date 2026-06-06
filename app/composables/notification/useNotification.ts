@@ -1,4 +1,5 @@
 import { toast } from 'vue-sonner'
+import { toApiError, type ApiError } from '~/types/response-server'
 
 /**
  * Reusable notification composable using vue-sonner.
@@ -61,11 +62,12 @@ export function useNotification() {
      * @param fallbackMessage - Fallback message if no error message is available
      */
     const handleValidationError = (
-        error: any,
+        error: unknown,
         fallbackMessage: string = 'Terjadi kesalahan saat menyimpan data'
     ) => {
-        const message = error?.message || fallbackMessage
-        const errors = error?.errors as Record<string, string[]> | null
+        const apiError = toApiError(error)
+        const message = apiError.message || fallbackMessage
+        const errors = apiError.errors
 
         if (errors && Object.keys(errors).length > 0) {
             // Collect all field error messages
@@ -98,11 +100,13 @@ export function useNotification() {
      * @param fallbackMessage - Fallback message if error can't be parsed
      */
     const handleApiError = (
-        error: any,
+        error: unknown,
         fallbackMessage: string = 'Terjadi kesalahan pada server'
     ) => {
+        const apiError: ApiError = toApiError(error)
+
         // Check for 422 validation errors
-        if (error?.status === 422) {
+        if (apiError.status === 422) {
             handleValidationError(error, fallbackMessage)
             return
         }
@@ -110,7 +114,7 @@ export function useNotification() {
         // Network or other errors
         const message = error instanceof Error
             ? error.message
-            : error?.message || fallbackMessage
+            : apiError.message || fallbackMessage
 
         toast.error(message, {
             duration: 5000,

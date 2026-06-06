@@ -117,8 +117,8 @@
             <div class="flex min-w-0 items-center gap-2">
               <DashboardAvatar :user="user" size="md" />
               <div class="flex min-w-0 flex-col group-data-[collapsible=icon]:hidden">
-                <span class="truncate text-sm font-medium">{{ user?.nama || 'User' }}</span>
-                <span class="truncate text-xs text-muted-foreground">{{ user?.email || '' }}</span>
+                <span class="truncate text-sm font-medium">{{ sidebarUserName }}</span>
+                <span class="truncate text-xs text-muted-foreground">{{ sidebarUserEmail }}</span>
               </div>
             </div>
             <button
@@ -172,65 +172,6 @@
           </div>
 
           <div class="flex shrink-0 items-center gap-1 sm:gap-2">
-            <!-- Notifikasi dengan dropdown -->
-            <div class="relative">
-              <button
-                type="button"
-                class="relative touch-manipulation rounded-full p-2.5 hover:bg-muted sm:p-2"
-                aria-label="Notifikasi"
-                @click="notificationOpen = !notificationOpen"
-              >
-                <Bell class="size-[18px] sm:size-5" />
-                <!-- Badge notifikasi -->
-                <span
-                  v-if="unreadNotifications.length > 0"
-                  class="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground"
-                >
-                  {{ unreadNotifications.length > 9 ? '9+' : unreadNotifications.length }}
-                </span>
-              </button>
-
-              <!-- Dropdown Notifikasi -->
-              <Transition name="notification-fade">
-                <div
-                  v-if="notificationOpen"
-                  class="absolute right-0 top-full mt-2 w-72 sm:w-80 bg-popover border rounded-lg shadow-lg z-50 overflow-hidden"
-                >
-                  <div class="flex items-center justify-between px-4 py-3 border-b">
-                    <span class="text-sm font-semibold">Notifikasi</span>
-                    <button
-                      v-if="notifications.length > 0"
-                      class="text-xs text-muted-foreground hover:text-foreground"
-                      @click="clearNotifications"
-                    >
-                      Hapus semua
-                    </button>
-                  </div>
-                  <div class="max-h-64 overflow-y-auto">
-                    <p v-if="notifications.length === 0" class="px-4 py-6 text-center text-sm text-muted-foreground">
-                      Belum ada notifikasi
-                    </p>
-                    <button
-                      v-for="(item, idx) in notifications"
-                      :key="idx"
-                      class="flex w-full items-start gap-3 px-4 py-3 text-left hover:bg-accent/50 transition-colors"
-                      :class="item.read ? '' : 'bg-primary/5'"
-                      @click="markAsRead(idx)"
-                    >
-                      <div
-                        class="mt-0.5 h-2 w-2 shrink-0 rounded-full"
-                        :class="item.read ? 'bg-transparent' : 'bg-primary'"
-                      />
-                      <div class="min-w-0 flex-1">
-                        <p class="text-sm leading-snug">{{ item.message }}</p>
-                        <p class="mt-0.5 text-xs text-muted-foreground">{{ item.time }}</p>
-                      </div>
-                    </button>
-                  </div>
-                </div>
-              </Transition>
-            </div>
-
             <!-- Avatar di header (mobile) -->
             <NuxtLink to="/settings" class="sm:hidden">
               <DashboardAvatar :user="user" size="sm" />
@@ -242,14 +183,6 @@
           </div>
         </header>
 
-        <!-- Overlay untuk menutup dropdown notifikasi -->
-        <div
-          v-if="notificationOpen"
-          class="fixed inset-0 z-[5]"
-          aria-hidden="true"
-          @click="notificationOpen = false"
-        />
-
         <!-- Main Content -->
         <main class="flex-1 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-6">
           <slot />
@@ -260,7 +193,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import {
   Sidebar,
   SidebarContent,
@@ -291,43 +224,26 @@ import {
   BarChart3,
   Settings,
   LogOut,
-  Bell,
 } from 'lucide-vue-next'
 
 const route = useRoute()
 const { user, logout } = useAuth()
 
-const customerMenuOpen = ref(false)
-const accountMenuOpen = ref(false)
-const notificationOpen = ref(false)
+/** Tunda tampilan data auth agar SSR = hydration (localStorage dibaca di plugin client). */
+const isClientReady = ref(false)
+onMounted(() => {
+  isClientReady.value = true
+})
 
-// ---- Notification state (client-side demo) ----
-interface NotificationItem {
-  message: string
-  time: string
-  read: boolean
-}
-
-const notifications = ref<NotificationItem[]>([
-  { message: 'Pembayaran baru diterima dari Budi Santoso', time: '5 menit lalu', read: false },
-  { message: 'Pencatatan meter bulan ini selesai', time: '1 jam lalu', read: false },
-  { message: '3 pelanggan baru terdaftar hari ini', time: '2 jam lalu', read: true },
-  { message: 'Target penagihan bulan ini tercapai 85%', time: '5 jam lalu', read: true },
-])
-
-const unreadNotifications = computed(() =>
-  notifications.value.filter((n) => !n.read),
+const sidebarUserName = computed(() =>
+  isClientReady.value ? (user.value?.nama || 'User') : 'User',
+)
+const sidebarUserEmail = computed(() =>
+  isClientReady.value ? (user.value?.email || '') : '',
 )
 
-function markAsRead(index: number) {
-  notifications.value[index].read = true
-}
-
-function clearNotifications() {
-  notifications.value = []
-}
-
-// ---- Route title ----
+const customerMenuOpen = ref(false)
+const accountMenuOpen = ref(false)
 const routeTitleMap: Record<string, string> = {
   '/': 'Masuk',
   '/dashboard': 'Dashboard',
@@ -345,7 +261,6 @@ const currentPageTitle = computed(() => routeTitleMap[route.path] ?? 'Dashboard'
 // Tutup menu saat rute berubah
 watch(() => route.path, () => {
   accountMenuOpen.value = false
-  notificationOpen.value = false
 })
 
 async function handleLogout() {
@@ -358,16 +273,5 @@ async function handleLogout() {
 :root {
   --sidebar-width: 16rem;
   --sidebar-width-icon: 3rem;
-}
-
-/* Animasi dropdown notifikasi */
-.notification-fade-enter-active,
-.notification-fade-leave-active {
-  transition: opacity 0.15s ease, transform 0.15s ease;
-}
-.notification-fade-enter-from,
-.notification-fade-leave-to {
-  opacity: 0;
-  transform: translateY(-8px);
 }
 </style>

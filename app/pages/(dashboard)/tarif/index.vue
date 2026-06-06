@@ -20,7 +20,7 @@
                 :search-keys="['nama_kategori']" search-placeholder="Cari nama kategori..." paginated :page-size="10"
                 :page-size-options="[5, 10, 25, 50]">
                 <!-- Custom cell: Nomor urut -->
-                <template #cell-index="{ row, column }">
+                <template #cell-index="{ row }">
                     {{ tarifs.indexOf(row as any) + 1 }}
                 </template>
 
@@ -52,7 +52,8 @@
 
     <!-- Centered Modal (outside WrapContent, so it renders properly) -->
     <template v-if="showPopup">
-        <TarifPopup :open="true" :tarif="selectedTarif" @close="closePopup" @save="(id, form) => saveTarif(id, form)" />
+        <TarifPopup :open="true" :tarif="selectedTarif" :loading="isEditLoading" :is-edit-mode="isEditMode"
+            :on-save="handleSaveTarif" @close="closePopup" @saved="onTarifSaved" />
     </template>
 
     <!-- Delete Confirmation AlertDialog -->
@@ -92,7 +93,7 @@ import Button from '~/components/ui/button/Button.vue';
 import Skeleton from '~/components/ui/skeleton/Skeleton.vue';
 import ReusableTable from '~/components/dashboard/ReusableTable.vue';
 import type { TableColumn } from '~/components/dashboard/ReusableTable.vue';
-import { type Tarif, type TarifForm } from '~/types/tarif';
+import type { Tarif, TarifForm } from '~/types/tarif';
 import TarifPopup from './components/popup.vue';
 import { useTarifCore } from '~/composables/tarif/useTarif';
 import {
@@ -108,6 +109,8 @@ import {
 
 const loading = ref(true);
 const isDeleting = ref(false);
+const isEditLoading = ref(false);
+const isEditMode = ref(false);
 const tarifs = ref<Tarif[]>([]);
 const selectedTarif = ref<Tarif | null>(null);
 const showPopup = ref(false);
@@ -126,59 +129,61 @@ const tableColumns: TableColumn[] = [
 ]
 
 const openAdd = () => {
+    isEditMode.value = false;
     selectedTarif.value = null;
     showPopup.value = true;
 };
 
 const openEdit = async (id: number) => {
-    console.log('Opening edit for Tarif ID:', id);
+    isEditMode.value = true;
+    selectedTarif.value = null;
+    showPopup.value = true;
+    isEditLoading.value = true;
     try {
         const response = await getTarifById(id);
         if (!response.data) {
             throw new Error('Data tarif tidak ditemukan');
         }
-        console.log('Fetched Tarif for Edit:', response.data);
         selectedTarif.value = response.data;
-        showPopup.value = true;
-    } catch (error) {
-        console.error('Gagal memuat data tarif untuk edit:', error);
+    } catch {
+        closePopup();
         toast.error('Gagal memuat data tarif');
+    } finally {
+        isEditLoading.value = false;
     }
 };
 
 const closePopup = () => {
     showPopup.value = false;
     selectedTarif.value = null;
+    isEditLoading.value = false;
+    isEditMode.value = false;
 };
 
-const saveTarif = (tarifId: number | null, form: TarifForm) => {
+const handleSaveTarif = async (tarifId: number | null, form: TarifForm): Promise<Tarif> => {
     if (tarifId) {
-        // Update existing tarif
-        updateTarif(tarifId, form).then((response) => {
-            if (response.data) {
-                const index = tarifs.value.findIndex(t => t.id === tarifId);
-                if (index !== -1) {
-                    tarifs.value[index] = response.data;
-                }
-            }
-        }).catch((error) => {
-            console.error('Gagal memperbarui tarif:', error);
-            toast.error('Gagal memperbarui tarif');
-        }).finally(() => {
-            closePopup();
-        });
+        const response = await updateTarif(tarifId, form);
+        if (!response.data) {
+            throw new Error(response.message || 'Gagal memperbarui tarif');
+        }
+        return response.data;
+    }
+
+    const response = await createTarif(form);
+    if (!response.data) {
+        throw new Error(response.message || 'Gagal menambahkan tarif baru');
+    }
+    return response.data;
+};
+
+const onTarifSaved = (tarif: Tarif) => {
+    const index = tarifs.value.findIndex(t => t.id === tarif.id);
+    if (index !== -1) {
+        tarifs.value[index] = tarif;
+        toast.success('Tarif berhasil diperbarui');
     } else {
-        // Add new tarif
-        createTarif(form).then((response) => {
-            if (response.data) {
-                tarifs.value.push(response.data);
-            }
-        }).catch((error) => {
-            console.error('Gagal menambahkan tarif baru:', error);
-            toast.error('Gagal menambahkan tarif baru');
-        }).finally(() => {
-            closePopup();
-        });
+        tarifs.value.push(tarif);
+        toast.success('Tarif berhasil ditambahkan');
     }
 };
 

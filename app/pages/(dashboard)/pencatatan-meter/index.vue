@@ -28,7 +28,7 @@
                 search-placeholder="Cari nama/ID pelanggan..." paginated :page-size="10"
                 :page-size-options="[5, 10, 25, 50]">
                 <!-- Custom cell: Nomor urut -->
-                <template #cell-index="{ row, column }">
+                <template #cell-index="{ row }">
                     {{ (pencatatanList as any[]).indexOf(row as any) + 1 }}
                 </template>
 
@@ -163,8 +163,13 @@
                 </DialogDescription>
             </DialogHeader>
             <div class="flex justify-center">
-                <img v-if="fotoPreviewUrl" :src="fotoPreviewUrl" alt="Foto meteran"
-                    class="max-h-96 rounded-md border object-contain" />
+                <ImageWithLoader
+                    v-if="fotoPreviewUrl"
+                    :src="fotoPreviewUrl"
+                    alt="Foto meteran"
+                    img-class="max-h-96 rounded-md border object-contain"
+                    skeleton-class="h-64 w-full rounded-md"
+                />
                 <span v-else class="text-muted-foreground">Tidak ada foto tersedia</span>
             </div>
             <DialogFooter>
@@ -183,7 +188,7 @@ import Button from '~/components/ui/button/Button.vue';
 import Skeleton from '~/components/ui/skeleton/Skeleton.vue';
 import ReusableTable from '~/components/dashboard/ReusableTable.vue';
 import type { TableColumn } from '~/components/dashboard/ReusableTable.vue';
-import { type PencatatanMeter, type PencatatanMeterForm } from '~/types/pencatatan-meter';
+import type { PencatatanMeter, PencatatanMeterForm } from '~/types/pencatatan-meter';
 import type { Pelanggan } from '~/types/customers';
 import PencatatanMeterPopup from './components/popup.vue';
 import { usePencatatanMeterCore } from '~/composables/pencatatan-meter/usePencatatanMeter';
@@ -207,6 +212,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog'
+import ImageWithLoader from '@/components/ui/image/ImageWithLoader.vue'
 
 const loading = ref(true);
 const isDeleting = ref(false);

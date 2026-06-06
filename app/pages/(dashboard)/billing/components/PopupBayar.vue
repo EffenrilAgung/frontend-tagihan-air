@@ -122,6 +122,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { Loader2Icon } from 'lucide-vue-next'
+import { toApiError } from '~/types/response-server'
 import type { PembayaranForm, UnpaidBill, Pembayaran } from '~/types/billing'
 import { formatCurrency, formatDate } from '~/utils/utils'
 import Button from '~/components/ui/button/Button.vue'
@@ -197,15 +198,15 @@ const handleSave = async () => {
     try {
         const result = await props.onProcess(form.value)
         emit('saved', result)
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Gagal memproses pembayaran:', error)
 
-        if (error.errors && typeof error.errors === 'object') {
-            // Validation errors from Laravel
-            errorMessage.value = error.message || 'Validasi gagal'
-            fieldErrors.value = Object.values(error.errors).flat() as string[]
-        } else if (error.message) {
-            errorMessage.value = error.message
+        const apiError = toApiError(error)
+        if (apiError.errors && typeof apiError.errors === 'object') {
+            errorMessage.value = apiError.message || 'Validasi gagal'
+            fieldErrors.value = Object.values(apiError.errors).flat()
+        } else if (apiError.message) {
+            errorMessage.value = apiError.message
         } else {
             errorMessage.value = 'Terjadi kesalahan saat memproses pembayaran'
         }

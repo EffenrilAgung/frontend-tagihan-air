@@ -1,7 +1,7 @@
 <template>
     <div v-if="open" class="fixed inset-0 z-50 flex items-center justify-center">
         <!-- Backdrop -->
-        <div class="absolute inset-0 bg-black/50" @click="$emit('close')" />
+        <div class="absolute inset-0 bg-black/50" @click="!isSaving && $emit('close')" />
 
         <!-- Modal Card -->
         <div
@@ -10,7 +10,7 @@
             <div class="flex items-center justify-between mb-4">
                 <h3 class="font-medium text-sm">{{ isEdit ? 'Edit Pencatatan Meter' : 'Input Pencatatan Meter' }}</h3>
                 <button class="rounded-full p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                    @click="$emit('close')">
+                    :disabled="isSaving" @click="$emit('close')">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <line x1="18" y1="6" x2="6" y2="18" />
@@ -112,8 +112,8 @@
                         <FieldLabel for="edit-foto">Foto Meteran <span
                                 class="text-xs text-muted-foreground">(opsional)</span></FieldLabel>
                         <div class="flex items-center gap-3">
-                            <Input id="edit-foto" type="file" accept="image/*" @change="handleFileChange"
-                                class="flex-1" />
+                            <Input id="edit-foto" type="file" accept="image/jpeg,image/png,image/jpg"
+                                @change="handleFileChange" class="flex-1" />
                             <Button v-if="hasFoto" variant="ghost" size="icon" @click="clearFoto" class="shrink-0">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
                                     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
@@ -126,16 +126,18 @@
                         </div>
                         <!-- Preview foto -->
                         <div v-if="previewUrl" class="mt-2">
-                            <img :src="previewUrl" alt="Preview foto meteran"
-                                class="max-h-32 rounded-md border object-cover" />
+                            <ImageWithLoader :src="previewUrl" alt="Preview foto meteran"
+                                img-class="max-h-32 rounded-md border object-cover"
+                                skeleton-class="h-32 w-full rounded-md" />
                         </div>
                     </Field>
 
                     <!-- Actions -->
                     <Field orientation="horizontal" class="gap-2 pt-2">
-                        <Button variant="outline" size="sm" @click="$emit('close')">Batal</Button>
-                        <Button size="sm" @click="handleSave" :disabled="!isFormValid">
-                            {{ isEdit ? 'Simpan Perubahan' : 'Simpan' }}
+                        <Button variant="outline" size="sm" @click="$emit('close')" :disabled="isSaving">Batal</Button>
+                        <Button size="sm" @click="handleSave" :disabled="!isFormValid || isSaving">
+                            <Loader2 v-if="isSaving" class="mr-2 size-4 animate-spin" />
+                            {{ isSaving ? 'Menyimpan...' : (isEdit ? 'Simpan Perubahan' : 'Simpan') }}
                         </Button>
                     </Field>
                 </FieldGroup>
@@ -146,6 +148,9 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, watch } from 'vue'
+import { Loader2 } from 'lucide-vue-next'
+import { toast } from 'vue-sonner'
+import ImageWithLoader from '@/components/ui/image/ImageWithLoader.vue'
 import {
     Field,
     FieldGroup,
@@ -163,6 +168,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select'
+import { toApiError } from '~/types/response-server'
 import type { PencatatanMeter, PencatatanMeterForm } from '~/types/pencatatan-meter'
 import type { Pelanggan } from '~/types/customers'
 import { formatCurrency } from '~/utils/utils'
@@ -252,19 +258,32 @@ const onPelangganChange = (pelangganId: number) => {
     }
 }
 
+const MAX_FOTO_SIZE = 10 * 1024 * 1024
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/jpg']
+
 // File handling
 const handleFileChange = (event: Event) => {
     const target = event.target as HTMLInputElement
     const file = target.files?.[0]
-    if (file) {
-        form.foto_meteran = file
-        // Create preview
-        const reader = new FileReader()
-        reader.onload = (e: ProgressEvent<FileReader>) => {
-            previewUrl.value = e.target?.result as string
-        }
-        reader.readAsDataURL(file)
+    if (!file) return
+
+    if (!ALLOWED_TYPES.includes(file.type)) {
+        toast.error('Format foto harus JPEG atau PNG')
+        target.value = ''
+        return
     }
+    if (file.size > MAX_FOTO_SIZE) {
+        toast.error('Ukuran foto maksimal 10 MB')
+        target.value = ''
+        return
+    }
+
+    form.foto_meteran = file
+    const reader = new FileReader()
+    reader.onload = (e: ProgressEvent<FileReader>) => {
+        previewUrl.value = e.target?.result as string
+    }
+    reader.readAsDataURL(file)
 }
 
 const clearFoto = () => {
@@ -287,7 +306,7 @@ watch(() => props.open, (isOpen) => {
         if (props.pencatatan) {
             // Edit mode
             form.pelanggan_id = props.pencatatan.pelanggan_id
-            form.tanggal_pencatatan = props.pencatatan.tanggal_pencatatan
+            form.tanggal_pencatatan = props.pencatatan.tanggal_pencatatan?.split('T')[0] || ''
             form.meter_awal = props.pencatatan.meter_awal
             form.meter_akhir = props.pencatatan.meter_akhir
             form.foto_meteran = null
@@ -338,20 +357,18 @@ const handleSave = async () => {
         result.updated_at = new Date(result.updated_at)
 
         emit('saved', result)
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Gagal menyimpan pencatatan:', error)
 
-        // Show toast notification
         handleApiError(error, 'Terjadi kesalahan saat menyimpan data')
 
-        // Also show inline error in the form popup
-        const errMsg = error?.message || 'Terjadi kesalahan saat menyimpan data'
+        const apiError = toApiError(error)
+        const errMsg = apiError.message || 'Terjadi kesalahan saat menyimpan data'
         errorMessage.value = errMsg
 
-        // Extract field validation errors (422) for inline display
-        if (error?.status === 422 && error?.errors) {
+        if (apiError.status === 422 && apiError.errors) {
             const errors: string[] = []
-            for (const [, messages] of Object.entries(error.errors)) {
+            for (const [, messages] of Object.entries(apiError.errors)) {
                 if (Array.isArray(messages)) {
                     errors.push(...messages)
                 }

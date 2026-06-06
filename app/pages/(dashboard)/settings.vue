@@ -9,22 +9,23 @@
       <div v-else class="mx-auto max-w-2xl space-y-6">
         <!-- Header profil -->
         <div class="overflow-hidden rounded-xl border bg-card shadow-sm">
-          <div class="bg-gradient-to-br from-primary/90 via-primary to-primary/70 px-6 pb-16 pt-8 text-primary-foreground">
+          <div
+            class="bg-gradient-to-br from-primary/90 via-primary to-primary/70 px-6 pb-16 pt-8 text-primary-foreground">
             <p class="text-sm font-medium opacity-90">Profil Akun</p>
             <h2 class="mt-1 text-2xl font-bold tracking-tight">{{ user?.nama ?? 'Pengguna' }}</h2>
             <p class="mt-0.5 text-sm opacity-90">{{ user?.email }}</p>
           </div>
           <div class="-mt-12 flex flex-col items-center px-6 pb-6">
             <ProfileAvatarPicker
+              ref="avatarPickerRef"
               :user="user"
-              :loading="saving && !!pendingFoto"
+              :uploading="isUploadingFoto"
               :disabled="saving"
-              @select="onFotoSelect"
-              @remove="onFotoRemove"
+              :upload-file="uploadFotoProfil"
+              :remove-file="removeFotoProfil"
             />
             <span
-              class="mt-3 inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold capitalize text-primary"
-            >
+              class="mt-3 inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold capitalize text-primary">
               {{ peranLabel }}
             </span>
             <p v-if="memberSince" class="mt-2 text-xs text-muted-foreground">
@@ -43,78 +44,43 @@
           <div class="space-y-4">
             <div class="space-y-2">
               <Label for="profile-nama">Nama Lengkap</Label>
-              <Input
-                id="profile-nama"
-                v-model="form.nama"
-                type="text"
-                placeholder="Nama lengkap"
-                required
-                :disabled="saving"
-              />
+              <Input id="profile-nama" v-model="form.nama" type="text" placeholder="Nama lengkap" required
+                :disabled="saving" />
             </div>
             <div class="space-y-2">
               <Label for="profile-email">Email</Label>
-              <Input
-                id="profile-email"
-                v-model="form.email"
-                type="email"
-                placeholder="email@contoh.com"
-                required
-                :disabled="saving"
-              />
+              <Input id="profile-email" v-model="form.email" type="email" placeholder="email@contoh.com" required
+                :disabled="saving" />
             </div>
           </div>
 
           <Separator class="my-6" />
 
-          <button
-            type="button"
-            class="flex w-full items-center justify-between text-left"
-            @click="showPasswordSection = !showPasswordSection"
-          >
+          <button type="button" class="flex w-full items-center justify-between text-left"
+            @click="showPasswordSection = !showPasswordSection">
             <div>
               <h3 class="text-lg font-semibold">Keamanan</h3>
               <p class="text-sm text-muted-foreground">Ubah password akun Anda</p>
             </div>
-            <ChevronDown
-              class="size-5 shrink-0 text-muted-foreground transition-transform"
-              :class="showPasswordSection ? 'rotate-180' : ''"
-            />
+            <ChevronDown class="size-5 shrink-0 text-muted-foreground transition-transform"
+              :class="showPasswordSection ? 'rotate-180' : ''" />
           </button>
 
           <div v-show="showPasswordSection" class="mt-4 space-y-4">
             <div class="space-y-2">
               <Label for="current-password">Password Saat Ini</Label>
-              <Input
-                id="current-password"
-                v-model="form.current_password"
-                type="password"
-                autocomplete="current-password"
-                placeholder="••••••••"
-                :disabled="saving"
-              />
+              <Input id="current-password" v-model="form.current_password" type="password"
+                autocomplete="current-password" placeholder="••••••••" :disabled="saving" />
             </div>
             <div class="space-y-2">
               <Label for="new-password">Password Baru</Label>
-              <Input
-                id="new-password"
-                v-model="form.password"
-                type="password"
-                autocomplete="new-password"
-                placeholder="Minimal 8 karakter"
-                :disabled="saving"
-              />
+              <Input id="new-password" v-model="form.password" type="password" autocomplete="new-password"
+                placeholder="Minimal 8 karakter" :disabled="saving" />
             </div>
             <div class="space-y-2">
               <Label for="confirm-password">Konfirmasi Password Baru</Label>
-              <Input
-                id="confirm-password"
-                v-model="form.password_confirmation"
-                type="password"
-                autocomplete="new-password"
-                placeholder="Ulangi password baru"
-                :disabled="saving"
-              />
+              <Input id="confirm-password" v-model="form.password_confirmation" type="password"
+                autocomplete="new-password" placeholder="Ulangi password baru" :disabled="saving" />
             </div>
           </div>
 
@@ -152,10 +118,6 @@
 
 <script setup lang="ts">
 /** Halaman bergantung localStorage/API — render hanya di client */
-definePageMeta({
-  ssr: false,
-})
-
 import { reactive, ref, computed, watch, onMounted } from 'vue'
 import { toast } from 'vue-sonner'
 import { Loader2, ChevronDown, LogOut } from 'lucide-vue-next'
@@ -169,16 +131,23 @@ import { Separator } from '@/components/ui/separator'
 import { useAuth } from '~/composables/auth/useAuth'
 import type { ProfileUpdateForm } from '~/types/users'
 import { formatDate } from '~/utils/utils'
+import { toApiError } from '~/types/response-server'
+
+definePageMeta({
+  ssr: false,
+})
 
 const { user, logout, fetchProfile, updateProfile } = useAuth()
+const { handleApiError } = useNotification()
 
 const isMounted = ref(false)
 const pageLoading = ref(true)
 const saving = ref(false)
 const loggingOut = ref(false)
 const showPasswordSection = ref(false)
-const pendingFoto = ref<File | null>(null)
-const removeFoto = ref(false)
+const pendingFoto = ref(false)
+const isUploadingFoto = ref(false)
+const avatarPickerRef = ref<{ resetPickerState: () => void } | null>(null)
 
 const form = reactive<ProfileUpdateForm>({
   nama: '',
@@ -212,19 +181,61 @@ function syncFormFromUser() {
 
 function resetForm() {
   syncFormFromUser()
-  pendingFoto.value = null
-  removeFoto.value = false
+  pendingFoto.value = false
+  avatarPickerRef.value?.resetPickerState()
   showPasswordSection.value = false
 }
 
-function onFotoSelect(file: File) {
-  pendingFoto.value = file
-  removeFoto.value = false
+async function uploadFotoProfil(file: File) {
+  if (!user.value) {
+    toast.error('Sesi tidak valid, silakan login ulang')
+    throw new Error('User tidak ditemukan')
+  }
+
+  isUploadingFoto.value = true
+  pendingFoto.value = true
+
+  try {
+    await updateProfile(
+      {
+        nama: form.nama.trim() || user.value.nama,
+        email: form.email.trim() || user.value.email,
+      },
+      { foto: file },
+    )
+  } catch (err: unknown) {
+    const apiError = toApiError(err)
+    if (apiError.status === 422 && apiError.errors) {
+      const allErrors = Object.values(apiError.errors).flat()
+      toast.error(allErrors.join(', ') || apiError.message || 'Gagal mengunggah foto')
+    } else {
+      handleApiError(err, 'Gagal mengunggah foto profil')
+    }
+    throw err
+  } finally {
+    isUploadingFoto.value = false
+    pendingFoto.value = false
+  }
 }
 
-function onFotoRemove() {
-  pendingFoto.value = null
-  removeFoto.value = true
+async function removeFotoProfil() {
+  if (!user.value?.foto_profil) return
+
+  isUploadingFoto.value = true
+  try {
+    await updateProfile(
+      {
+        nama: form.nama.trim() || user.value.nama,
+        email: form.email.trim() || user.value.email,
+      },
+      { removeFoto: true },
+    )
+  } catch (err: unknown) {
+    handleApiError(err, 'Gagal menghapus foto profil')
+    throw err
+  } finally {
+    isUploadingFoto.value = false
+  }
 }
 
 async function saveProfile() {
@@ -249,6 +260,11 @@ async function saveProfile() {
     }
   }
 
+  if (pendingFoto.value) {
+    toast.info('Foto sedang diunggah, tunggu sebentar')
+    return
+  }
+
   saving.value = true
   try {
     const payload: ProfileUpdateForm = {
@@ -261,23 +277,20 @@ async function saveProfile() {
       payload.password_confirmation = form.password_confirmation
     }
 
-    await updateProfile(payload, {
-      foto: pendingFoto.value,
-      removeFoto: removeFoto.value,
-    })
+    await updateProfile(payload)
 
-    pendingFoto.value = null
-    removeFoto.value = false
     showPasswordSection.value = false
     form.current_password = ''
     form.password = ''
     form.password_confirmation = ''
   } catch (err: unknown) {
-    const e = err as { message?: string; errors?: Record<string, string[]> }
-    const firstFieldError = e.errors
-      ? Object.values(e.errors).flat()[0]
-      : undefined
-    toast.error(firstFieldError ?? e.message ?? 'Gagal menyimpan profil')
+    const apiError = toApiError(err)
+    if (apiError.status === 422 && apiError.errors) {
+      const allErrors = Object.values(apiError.errors).flat()
+      toast.error(allErrors.join(', ') || apiError.message || 'Validasi gagal')
+    } else {
+      handleApiError(err, 'Gagal menyimpan profil')
+    }
   } finally {
     saving.value = false
   }

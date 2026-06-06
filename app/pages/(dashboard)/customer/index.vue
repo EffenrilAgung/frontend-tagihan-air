@@ -20,7 +20,7 @@
         :search-keys="['nama', 'id_pelanggan', 'no_hp']" search-placeholder="Cari nama/ID/No. HP..." paginated
         :page-size="10" :page-size-options="[5, 10, 25, 50]">
         <!-- Custom cell: Nomor urut -->
-        <template #cell-index="{ row, column }">
+        <template #cell-index="{ row }">
           {{ pelanggans.indexOf(row as any) + 1 }}
         </template>
 
@@ -62,8 +62,9 @@
 
   <!-- Centered Modal (outside WrapContent, so it renders properly) -->
   <template v-if="showPopup">
-    <CustomerPopup :open="true" :pelanggan="selectedPelanggan" :tarif-options="tarifOptions" @close="closePopup"
-      @save="(id, form) => savePelanggan(id, form)" />
+    <CustomerPopup :open="true" :pelanggan="selectedPelanggan" :tarif-options="tarifOptions"
+      :loading="isEditLoading" :is-edit-mode="isEditMode" :on-save="handleSavePelanggan" @close="closePopup"
+      @saved="onPelangganSaved" />
   </template>
 
   <!-- Delete Confirmation AlertDialog -->
@@ -102,7 +103,7 @@ import Button from '~/components/ui/button/Button.vue';
 import Skeleton from '~/components/ui/skeleton/Skeleton.vue';
 import ReusableTable from '~/components/dashboard/ReusableTable.vue';
 import type { TableColumn } from '~/components/dashboard/ReusableTable.vue';
-import { type Pelanggan, type PelangganForm } from '~/types/customers';
+import type { Pelanggan, PelangganForm } from '~/types/customers';
 import type { Tarif } from '~/types/tarif';
 import CustomerPopup from './components/popup.vue';
 import { useCustomerCore } from '~/composables/customer/useCostumer';
@@ -121,6 +122,8 @@ import {
 
 const loading = ref(true);
 const isDeleting = ref(false);
+const isEditLoading = ref(false);
+const isEditMode = ref(false);
 const pelanggans = ref<Pelanggan[]>([]);
 const selectedPelanggan = ref<Pelanggan | null>(null);
 const showPopup = ref(false);
@@ -144,58 +147,61 @@ const tableColumns: TableColumn[] = [
 ]
 
 const openAdd = () => {
+  isEditMode.value = false;
   selectedPelanggan.value = null;
   showPopup.value = true;
 };
 
 const openEdit = async (id: number) => {
-  console.log('Opening edit for Pelanggan ID:', id);
+  isEditMode.value = true;
+  selectedPelanggan.value = null;
+  showPopup.value = true;
+  isEditLoading.value = true;
   try {
     const response = await getCustomerById(id);
     if (!response.data) {
       throw new Error('Data pelanggan tidak ditemukan');
     }
-    console.log('Fetched Pelanggan for Edit:', response.data);
     selectedPelanggan.value = response.data;
-    showPopup.value = true;
-  } catch (error) {
-    console.error('Gagal memuat data pelanggan untuk edit:', error);
+  } catch {
+    closePopup();
+    toast.error('Gagal memuat data pelanggan');
+  } finally {
+    isEditLoading.value = false;
   }
 };
 
 const closePopup = () => {
   showPopup.value = false;
   selectedPelanggan.value = null;
+  isEditLoading.value = false;
+  isEditMode.value = false;
 };
 
-const savePelanggan = (pelangganId: number | null, form: PelangganForm) => {
+const handleSavePelanggan = async (pelangganId: number | null, form: PelangganForm): Promise<Pelanggan> => {
   if (pelangganId) {
-    // Update existing pelanggan
-    updateCustomer(pelangganId, form).then((response) => {
-      if (response.data) {
-        const index = pelanggans.value.findIndex(p => p.id === pelangganId);
-        if (index !== -1) {
-          pelanggans.value[index] = response.data;
-        }
-      }
-    }).catch((error) => {
-      console.error('Gagal memperbarui pelanggan:', error);
-      toast.error('Gagal memperbarui pelanggan');
-    }).finally(() => {
-      closePopup();
-    });
+    const response = await updateCustomer(pelangganId, form);
+    if (!response.data) {
+      throw new Error(response.message || 'Gagal memperbarui pelanggan');
+    }
+    return response.data;
+  }
+
+  const response = await createCustomer(form);
+  if (!response.data) {
+    throw new Error(response.message || 'Gagal menambahkan pelanggan baru');
+  }
+  return response.data;
+};
+
+const onPelangganSaved = (pelanggan: Pelanggan) => {
+  const index = pelanggans.value.findIndex(p => p.id === pelanggan.id);
+  if (index !== -1) {
+    pelanggans.value[index] = pelanggan;
+    toast.success('Pelanggan berhasil diperbarui');
   } else {
-    // Add new pelanggan
-    createCustomer(form).then((response) => {
-      if (response.data) {
-        pelanggans.value.push(response.data);
-      }
-    }).catch((error) => {
-      console.error('Gagal menambahkan pelanggan baru:', error);
-      toast.error('Gagal menambahkan pelanggan baru');
-    }).finally(() => {
-      closePopup();
-    });
+    pelanggans.value.push(pelanggan);
+    toast.success('Pelanggan berhasil ditambahkan');
   }
 };
 

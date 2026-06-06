@@ -109,25 +109,51 @@ export function useAuth() {
         options?: { foto?: File | null; removeFoto?: boolean },
     ): Promise<User> {
         const api = useApi()
-        const formData = new FormData()
-        formData.append('nama', form.nama.trim())
-        formData.append('email', form.email.trim())
+        const hasFileUpload = options?.foto instanceof File || options?.removeFoto
+
+        if (hasFileUpload) {
+            const formData = new FormData()
+            formData.append('nama', form.nama.trim())
+            formData.append('email', form.email.trim())
+
+            if (form.password?.trim()) {
+                formData.append('current_password', form.current_password ?? '')
+                formData.append('password', form.password)
+                formData.append('password_confirmation', form.password_confirmation ?? '')
+            }
+
+            if (options?.removeFoto) {
+                formData.append('remove_foto', '1')
+            }
+
+            if (options?.foto) {
+                formData.append('foto_profil', options.foto)
+            }
+
+            formData.append('_method', 'PUT')
+            const res = await api.post<User>('/profile', formData)
+
+            if (!res.success || !res.data) {
+                throw new Error(res.message || 'Gagal memperbarui profil')
+            }
+
+            persistUser(res.data)
+            toast.success(res.message || 'Profil berhasil diperbarui')
+            return res.data
+        }
+
+        const payload: ProfileUpdateForm = {
+            nama: form.nama.trim(),
+            email: form.email.trim(),
+        }
 
         if (form.password?.trim()) {
-            formData.append('current_password', form.current_password ?? '')
-            formData.append('password', form.password)
-            formData.append('password_confirmation', form.password_confirmation ?? '')
+            payload.current_password = form.current_password
+            payload.password = form.password
+            payload.password_confirmation = form.password_confirmation
         }
 
-        if (options?.removeFoto) {
-            formData.append('remove_foto', '1')
-        }
-
-        if (options?.foto) {
-            formData.append('foto_profil', options.foto)
-        }
-
-        const res = await api.put<User>('/profile', formData)
+        const res = await api.put<User>('/profile', payload)
 
         if (!res.success || !res.data) {
             throw new Error(res.message || 'Gagal memperbarui profil')

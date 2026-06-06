@@ -62,6 +62,12 @@ export function useApi() {
         }
 
         if (body) {
+            // For FormData with non-GET/POST methods, use POST with _method spoofing
+            // because browsers don't send multipart/form-data correctly with PUT/PATCH/DELETE
+            if (isFormData && method !== 'GET' && method !== 'POST') {
+                (body as FormData).append('_method', method)
+                options.method = 'POST'
+            }
             options.body = isFormData ? body : JSON.stringify(body)
         }
 

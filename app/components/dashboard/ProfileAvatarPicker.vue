@@ -1,24 +1,26 @@
 <script setup lang="ts">
-import { ref, watch, computed, onBeforeUnmount } from 'vue'
+import { ref, watch, computed, onBeforeUnmount, useId } from 'vue'
 import { Camera, Trash2, Loader2 } from 'lucide-vue-next'
+import { toast } from 'vue-sonner'
 import DashboardAvatar from './DashboardAvatar.vue'
 import type { User } from '~/types/users'
-import { Button } from '@/components/ui/button'
+import { validateProfileImageFile } from '~/utils/image-file'
 
 const props = defineProps<{
   user: User | null
   disabled?: boolean
-  loading?: boolean
+  uploading?: boolean
+  uploadFile: (file: File) => Promise<void>
+  removeFile?: () => Promise<void>
 }>()
 
-const emit = defineEmits<{
-  select: [file: File]
-  remove: []
-}>()
+const inputId = `profile-avatar-${useId().replace(/:/g, '')}`
 
-const fileInput = ref<HTMLInputElement | null>(null)
 const previewUrl = ref<string | null>(null)
 const markedForRemoval = ref(false)
+const inlineError = ref('')
+
+const isBusy = computed(() => !!(props.disabled || props.uploading))
 
 const displayUser = computed(() => {
   if (!props.user) return null
@@ -30,8 +32,8 @@ const displayUser = computed(() => {
 
 watch(
   () => props.user?.foto_profil,
-  () => {
-    if (!markedForRemoval.value) {
+  (newVal, oldVal) => {
+    if (newVal && newVal !== oldVal && !markedForRemoval.value) {
       revokePreview()
     }
   },
@@ -44,36 +46,56 @@ function revokePreview() {
   previewUrl.value = null
 }
 
-onBeforeUnmount(revokePreview)
-
-function openPicker() {
-  if (props.disabled || props.loading) return
-  fileInput.value?.click()
+function resetPickerState() {
+  markedForRemoval.value = false
+  inlineError.value = ''
+  revokePreview()
 }
 
-function onFileChange(event: Event) {
+onBeforeUnmount(revokePreview)
+
+async function handleFileChange(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
-  if (!file) return
+  input.value = ''
 
-  if (!file.type.startsWith('image/')) {
+  if (!file || isBusy.value) return
+
+  inlineError.value = ''
+  const validationError = validateProfileImageFile(file)
+  if (validationError) {
+    inlineError.value = validationError
+    toast.error(validationError)
     return
   }
 
   markedForRemoval.value = false
   revokePreview()
   previewUrl.value = URL.createObjectURL(file)
-  emit('select', file)
-  input.value = ''
+
+  try {
+    await props.uploadFile(file)
+  } catch {
+    resetPickerState()
+  }
 }
 
-function removePhoto() {
+async function handleRemove() {
+  if (isBusy.value || !props.removeFile) return
+  if (!props.user?.foto_profil && !previewUrl.value) return
+
   markedForRemoval.value = true
   revokePreview()
-  emit('remove')
+
+  try {
+    await props.removeFile()
+    markedForRemoval.value = false
+  } catch {
+    resetPickerState()
+  }
 }
 
-defineExpose({ clearPreview: revokePreview })
+defineExpose({ resetPickerState })
 </script>
 
 <template>
@@ -84,45 +106,58 @@ defineExpose({ clearPreview: revokePreview })
         size="xl"
         :preview-url="previewUrl"
       />
-      <button
-        type="button"
-        class="absolute bottom-0 right-0 flex h-9 w-9 items-center justify-center rounded-full border-2 border-background bg-primary text-primary-foreground shadow-md transition hover:bg-primary/90 disabled:opacity-50"
-        :disabled="disabled || loading"
-        aria-label="Ubah foto profil"
-        @click="openPicker"
-      >
-        <Loader2 v-if="loading" class="size-4 animate-spin" />
-        <Camera v-else class="size-4" />
-      </button>
+
       <input
-        ref="fileInput"
+        :id="inputId"
         type="file"
-        accept="image/jpeg,image/png,image/webp,image/gif"
-        class="sr-only"
-        @change="onFileChange"
+        accept="image/jpeg,image/png,image/jpg,.jpg,.jpeg,.png"
+        class="hidden"
+        :disabled="isBusy"
+        @change="handleFileChange"
       />
+
+      <label
+        :for="isBusy ? undefined : inputId"
+        class="absolute bottom-0 right-0 z-10 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border-2 border-background bg-primary text-primary-foreground shadow-md transition hover:bg-primary/90"
+        :class="isBusy ? 'pointer-events-none opacity-50' : ''"
+        aria-label="Ubah foto profil"
+      >
+        <Loader2 v-if="uploading" class="size-4 animate-spin" />
+        <Camera v-else class="size-4" />
+      </label>
     </div>
 
     <div class="flex flex-wrap items-center justify-center gap-2">
-      <Button type="button" variant="outline" size="sm" :disabled="disabled || loading" @click="openPicker">
-        <Camera class="mr-1.5 size-4" />
-        Unggah Foto
-      </Button>
-      <Button
+      <label
+        :for="isBusy ? undefined : inputId"
+        class="inline-flex"
+        :class="isBusy ? 'pointer-events-none opacity-50' : 'cursor-pointer'"
+      >
+        <span
+          class="inline-flex items-center justify-center rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium shadow-xs hover:bg-accent hover:text-accent-foreground"
+        >
+          <Camera class="mr-1.5 size-4" />
+          Unggah Foto
+        </span>
+      </label>
+
+      <button
         v-if="user?.foto_profil || previewUrl"
         type="button"
-        variant="ghost"
-        size="sm"
-        class="text-destructive hover:text-destructive"
-        :disabled="disabled || loading"
-        @click="removePhoto"
+        class="inline-flex items-center justify-center rounded-md px-3 py-1.5 text-sm font-medium text-destructive hover:bg-accent disabled:pointer-events-none disabled:opacity-50"
+        :disabled="isBusy"
+        @click="handleRemove"
       >
         <Trash2 class="mr-1.5 size-4" />
         Hapus Foto
-      </Button>
+      </button>
     </div>
-    <p class="text-center text-xs text-muted-foreground">
-      JPG, PNG, atau WebP. Maks. 2 MB.
+
+    <p v-if="inlineError" class="text-center text-xs text-destructive">
+      {{ inlineError }}
+    </p>
+    <p v-else class="text-center text-xs text-muted-foreground">
+      JPG atau PNG. Maks. 2 MB. Foto langsung diunggah setelah dipilih.
     </p>
   </div>
 </template>

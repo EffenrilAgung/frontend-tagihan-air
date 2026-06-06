@@ -1,10 +1,6 @@
 <script setup lang="ts">
 import type { SidebarProps } from "."
 import { cn } from "@/lib/utils"
-import { Sheet, SheetContent } from '@/components/ui/sheet'
-import SheetDescription from '@/components/ui/sheet/SheetDescription.vue'
-import SheetHeader from '@/components/ui/sheet/SheetHeader.vue'
-import SheetTitle from '@/components/ui/sheet/SheetTitle.vue'
 import { SIDEBAR_WIDTH_MOBILE, useSidebar } from "./utils"
 import { onMounted, ref } from "vue"
 
@@ -37,20 +33,20 @@ onMounted(() => {
     <slot />
   </div>
 
-  <Sheet v-else-if="isHydrated && isMobile" :open="openMobile" v-bind="$attrs" @update:open="setOpenMobile">
-    <SheetContent data-sidebar="sidebar" data-slot="sidebar" data-mobile="true" :side="side"
+  <LazySheet v-else-if="isHydrated && isMobile" :open="openMobile" v-bind="$attrs" @update:open="setOpenMobile">
+    <LazySheetContent data-sidebar="sidebar" data-slot="sidebar" data-mobile="true" :side="side"
       class="z-100 w-(--sidebar-width) border-border bg-white p-0 text-foreground shadow-xl [&>button]:hidden" :style="{
         '--sidebar-width': SIDEBAR_WIDTH_MOBILE,
       }">
-      <SheetHeader class="sr-only">
-        <SheetTitle>Sidebar</SheetTitle>
-        <SheetDescription>Displays the mobile sidebar.</SheetDescription>
-      </SheetHeader>
+      <LazySheetHeader class="sr-only">
+        <LazySheetTitle>Sidebar</LazySheetTitle>
+        <LazySheetDescription>Displays the mobile sidebar.</LazySheetDescription>
+      </LazySheetHeader>
       <div class="flex h-full w-full flex-col bg-white pt-[env(safe-area-inset-top)]">
         <slot />
       </div>
-    </SheetContent>
-  </Sheet>
+    </LazySheetContent>
+  </LazySheet>
 
   <div v-else class="group peer hidden text-foreground md:block" data-slot="sidebar" :data-state="state"
     :data-collapsible="state === 'collapsed' ? collapsible : ''" :data-variant="variant" :data-side="side">

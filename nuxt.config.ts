@@ -65,5 +65,17 @@ export default defineNuxtConfig({
     public: {
       apiBaseUrl: process.env.NUXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000/api'
     }
-  }
+  },
+
+  eslint: {
+    checker: {
+      lintOnStart: true,
+      emitWarning: true,
+      emitError: true,
+      vite: {
+        failOnWarning: true,
+        failOnError: true,
+      },
+    },
+  },
 })

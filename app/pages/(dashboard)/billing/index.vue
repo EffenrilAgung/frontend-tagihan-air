@@ -187,6 +187,7 @@ import Skeleton from '~/components/ui/skeleton/Skeleton.vue'
 import Input from '~/components/ui/input/Input.vue'
 import ReusableTable from '~/components/dashboard/ReusableTable.vue'
 import type { TableColumn } from '~/components/dashboard/ReusableTable.vue'
+import { toApiError } from '~/types/response-server'
 import type { Pembayaran, PembayaranForm, UnpaidBill } from '~/types/billing'
 import PopupBayar from './components/PopupBayar.vue'
 import { useBillingCore } from '~/composables/billing/useBilling'
@@ -299,8 +300,8 @@ const confirmDelete = async () => {
         showDeleteAlert.value = false
         pembayaranToDelete.value = null
         toast.success('Pembayaran berhasil dihapus')
-    } catch (error: any) {
-        const message = error?.message || 'Gagal menghapus pembayaran'
+    } catch (error: unknown) {
+        const message = toApiError(error).message || 'Gagal menghapus pembayaran'
         toast.error(message)
     } finally {
         isDeleting.value = false
@@ -321,7 +322,7 @@ const applyFilter = async () => {
             filterStart.value,
             filterEnd.value
         )
-    } catch (error) {
+    } catch {
         toast.error('Gagal memfilter pembayaran')
     } finally {
         loadingHistory.value = false
@@ -339,7 +340,7 @@ const loadPaymentHistory = async () => {
     loadingHistory.value = true
     try {
         pembayaranList.value = await getPembayaran()
-    } catch (error) {
+    } catch {
         toast.error('Gagal memuat riwayat pembayaran')
     } finally {
         loadingHistory.value = false
@@ -350,7 +351,7 @@ const loadUnpaidBills = async () => {
     loadingUnpaid.value = true
     try {
         unpaidBills.value = await getUnpaidBills()
-    } catch (error) {
+    } catch {
         toast.error('Gagal memuat tagihan belum dibayar')
     } finally {
         loadingUnpaid.value = false
