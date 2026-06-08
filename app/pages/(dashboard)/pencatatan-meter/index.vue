@@ -27,6 +27,70 @@
                 searchable :search-keys="['pelanggan.nama', 'pelanggan.id_pelanggan']"
                 search-placeholder="Cari nama/ID pelanggan..." paginated :page-size="10"
                 :page-size-options="[5, 10, 25, 50]">
+                <!-- Mobile card layout -->
+                <template #mobile-card="{ row }">
+                    <div class="space-y-3 p-4">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <p class="truncate font-semibold text-base">
+                                    {{ (row as PencatatanMeter).pelanggan?.nama || '-' }}
+                                </p>
+                                <p class="text-xs text-muted-foreground">
+                                    {{ (row as PencatatanMeter).pelanggan?.id_pelanggan || '-' }}
+                                </p>
+                            </div>
+                            <span :class="[
+                                'shrink-0 rounded-full px-2.5 py-1 text-xs font-medium',
+                                (row as PencatatanMeter).status_bayar
+                                    ? 'bg-green-100 text-green-800'
+                                    : 'bg-yellow-100 text-yellow-800',
+                            ]">
+                                {{ (row as PencatatanMeter).status_bayar ? 'Lunas' : 'Belum Bayar' }}
+                            </span>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2 text-sm">
+                            <div class="rounded-lg bg-muted/40 px-3 py-2">
+                                <p class="text-xs text-muted-foreground">Tanggal</p>
+                                <p class="font-medium">
+                                    {{ formatDate(new Date((row as PencatatanMeter).tanggal_pencatatan), 'DD MMM YYYY') }}
+                                </p>
+                            </div>
+                            <div class="rounded-lg bg-muted/40 px-3 py-2">
+                                <p class="text-xs text-muted-foreground">Pemakaian</p>
+                                <p class="font-semibold">{{ (row as PencatatanMeter).pemakaian_m3 }} M³</p>
+                            </div>
+                            <div class="rounded-lg bg-muted/40 px-3 py-2">
+                                <p class="text-xs text-muted-foreground">Meter Awal</p>
+                                <p class="font-medium">{{ (row as PencatatanMeter).meter_awal }}</p>
+                            </div>
+                            <div class="rounded-lg bg-muted/40 px-3 py-2">
+                                <p class="text-xs text-muted-foreground">Meter Akhir</p>
+                                <p class="font-medium">{{ (row as PencatatanMeter).meter_akhir }}</p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between rounded-lg border border-primary/20 bg-primary/5 px-3 py-2.5">
+                            <span class="text-sm text-muted-foreground">Total Tagihan</span>
+                            <span class="text-base font-bold text-primary">
+                                {{ formatCurrency((row as PencatatanMeter).total_tagihan_dasar) }}
+                            </span>
+                        </div>
+
+                        <div class="flex items-center justify-between text-xs text-muted-foreground">
+                            <span>Update: {{ formatDate((row as PencatatanMeter).updated_at, 'DD MMM YYYY, HH.mm') }}</span>
+                            <button
+                                v-if="(row as PencatatanMeter).foto_meteran_path"
+                                type="button"
+                                class="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-foreground hover:bg-muted/80"
+                                @click.stop="openFotoPreview(row as PencatatanMeter)"
+                            >
+                                Lihat Foto
+                            </button>
+                        </div>
+                    </div>
+                </template>
+
                 <!-- Custom cell: Nomor urut -->
                 <template #cell-index="{ row }">
                     {{ (pencatatanList as any[]).indexOf(row as any) + 1 }}
@@ -92,6 +156,15 @@
                 <!-- Custom cell: Actions -->
                 <template #cell-actions="{ row }">
                     <div class="flex items-center gap-2">
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            class="border-green-600 text-green-700 hover:bg-green-50 hover:text-green-800"
+                            @click.stop="openShareDialog(row as PencatatanMeter)"
+                        >
+                            <MessageCircle class="mr-1 size-3.5" />
+                            WA
+                        </Button>
                         <Button size="sm" class="bg-green-500 hover:bg-green-600 text-white"
                             @click.stop="openEdit((row as any).id)">
                             Edit
@@ -105,6 +178,15 @@
                 <!-- Mobile actions -->
                 <template #mobile-actions="{ row }">
                     <div class="flex items-center justify-end gap-2 pt-2 border-t mt-2">
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            class="border-green-600 text-green-700 hover:bg-green-50 hover:text-green-800"
+                            @click.stop="openShareDialog(row as PencatatanMeter)"
+                        >
+                            <MessageCircle class="mr-1 size-3.5" />
+                            WA
+                        </Button>
                         <Button size="sm" class="bg-green-500 hover:bg-green-600 text-white"
                             @click.stop="openEdit((row as any).id)">
                             Edit
@@ -153,27 +235,35 @@
         </AlertDialogContent>
     </AlertDialog>
 
+    <!-- Share Tagihan Dialog -->
+    <ShareTagihanDialog
+        :open="showShareDialog"
+        :pencatatan="sharePencatatan"
+        :api-base="apiBase"
+        @close="closeShareDialog"
+    />
+
     <!-- Foto Preview Dialog -->
     <Dialog v-model:open="showFotoPreview">
-        <DialogContent class="sm:max-w-lg">
+        <DialogContent class="w-[calc(100vw-1.5rem)] max-w-lg p-4 sm:p-6">
             <DialogHeader>
                 <DialogTitle>Foto Meteran</DialogTitle>
                 <DialogDescription>
                     Pelanggan: {{ fotoPreviewPelanggan }}
                 </DialogDescription>
             </DialogHeader>
-            <div class="flex justify-center">
+            <div class="flex min-h-[200px] items-center justify-center">
                 <ImageWithLoader
                     v-if="fotoPreviewUrl"
                     :src="fotoPreviewUrl"
                     alt="Foto meteran"
-                    img-class="max-h-96 rounded-md border object-contain"
-                    skeleton-class="h-64 w-full rounded-md"
+                    img-class="max-h-[60vh] w-full rounded-md border object-contain"
+                    skeleton-class="h-56 w-full rounded-md sm:h-64"
                 />
                 <span v-else class="text-muted-foreground">Tidak ada foto tersedia</span>
             </div>
-            <DialogFooter>
-                <Button variant="outline" @click="showFotoPreview = false">Tutup</Button>
+            <DialogFooter class="flex-col gap-2 sm:flex-row">
+                <Button variant="outline" class="w-full sm:w-auto" @click="showFotoPreview = false">Tutup</Button>
             </DialogFooter>
         </DialogContent>
     </Dialog>
@@ -182,7 +272,7 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, computed } from 'vue'
 import { toast } from 'vue-sonner'
-import { Loader2Icon } from 'lucide-vue-next'
+import { Loader2Icon, MessageCircle } from 'lucide-vue-next'
 import WrapContent from '~/components/dashboard/WrapContent.vue';
 import Button from '~/components/ui/button/Button.vue';
 import Skeleton from '~/components/ui/skeleton/Skeleton.vue';
@@ -191,6 +281,7 @@ import type { TableColumn } from '~/components/dashboard/ReusableTable.vue';
 import type { PencatatanMeter, PencatatanMeterForm } from '~/types/pencatatan-meter';
 import type { Pelanggan } from '~/types/customers';
 import PencatatanMeterPopup from './components/popup.vue';
+import ShareTagihanDialog from './components/ShareTagihanDialog.vue';
 import { usePencatatanMeterCore } from '~/composables/pencatatan-meter/usePencatatanMeter';
 import { useCustomerCore } from '~/composables/customer/useCostumer';
 import { formatCurrency, formatDate } from '~/utils/utils';
@@ -224,6 +315,11 @@ const pencatatanToDelete = ref<PencatatanMeter | null>(null);
 const showFotoPreview = ref(false);
 const fotoPreviewUrl = ref<string | null>(null);
 const fotoPreviewPelanggan = ref('');
+const showShareDialog = ref(false);
+const sharePencatatan = ref<PencatatanMeter | null>(null);
+
+const config = useRuntimeConfig()
+const apiBase = config.public.apiBaseUrl as string
 
 const { getPencatatanMeter, createPencatatanMeter, updatePencatatanMeter, deletePencatatanMeter, getPencatatanMeterById } = usePencatatanMeterCore()
 const { getCustomers } = useCustomerCore()
@@ -249,12 +345,12 @@ const tableColumns: TableColumn[] = [
     { key: 'pelanggan', label: 'Pelanggan', sortable: false },
     { key: 'meter_awal', label: 'Meter Awal', sortable: true, align: 'right', width: '100px' },
     { key: 'meter_akhir', label: 'Meter Akhir', sortable: true, align: 'right', width: '100px' },
-    { key: 'pemakaian_m3', label: 'Pemakaian', sortable: true, align: 'right', width: '100px' },
+    { key: 'pemakaian_m3', label: 'Pemakaian', sortable: true, align: 'right', width: '100px', hideOnMobile: true },
     { key: 'total_tagihan_dasar', label: 'Tagihan', sortable: true, align: 'right', width: '120px', hideOnMobile: true },
     { key: 'foto_meteran_path', label: 'Foto', width: '60px', align: 'center' },
     { key: 'status_bayar', label: 'Status', width: '120px', align: 'center' },
     { key: 'updated_at', label: 'Update', sortable: true, width: '160px', hideOnMobile: true },
-    { key: 'actions', label: 'Actions', width: '160px', align: 'center' },
+    { key: 'actions', label: 'Actions', width: '220px', align: 'center' },
 ]
 
 const openAdd = () => {
@@ -340,6 +436,16 @@ const openFotoPreview = (pencatatan: PencatatanMeter) => {
     fotoPreviewPelanggan.value = pencatatan.pelanggan?.nama || 'Unknown';
     showFotoPreview.value = true;
 };
+
+function openShareDialog(pencatatan: PencatatanMeter) {
+    sharePencatatan.value = pencatatan;
+    showShareDialog.value = true;
+}
+
+function closeShareDialog() {
+    showShareDialog.value = false;
+    sharePencatatan.value = null;
+}
 
 // Reset pencatatanToDelete when alert dialog is dismissed
 watch(showDeleteAlert, (isOpen) => {

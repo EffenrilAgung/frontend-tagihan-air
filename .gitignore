@@ -23,3 +23,9 @@ ecosystem.config.cjs
 .env
 .env.*
 !.env.example
+!.env.e2e.example
+
+# Playwright
+/playwright-report/
+/test-results/
+/blob-report/

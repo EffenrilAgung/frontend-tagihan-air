@@ -1,14 +1,13 @@
 <template>
-    <div v-if="open" class="fixed inset-0 z-50 flex items-center justify-center">
+    <div v-if="open" class="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
         <!-- Backdrop -->
         <div class="absolute inset-0 bg-black/50" @click="!isSaving && $emit('close')" />
 
         <!-- Modal Card -->
         <div
-            class="relative bg-popover text-popover-foreground w-full max-w-xl rounded-lg border p-6 shadow-lg mx-4 max-h-[90vh] overflow-y-auto">
-            <!-- Header -->
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="font-medium text-sm">{{ isEdit ? 'Edit Pencatatan Meter' : 'Input Pencatatan Meter' }}</h3>
+            class="relative mx-0 flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-2xl border bg-popover text-popover-foreground shadow-lg sm:mx-4 sm:max-h-[90vh] sm:max-w-xl sm:rounded-lg">
+            <div class="flex shrink-0 items-center justify-between border-b px-4 py-3 sm:px-6 sm:py-4">
+                <h3 class="text-base font-semibold sm:text-sm">{{ isEdit ? 'Edit Pencatatan Meter' : 'Input Pencatatan Meter' }}</h3>
                 <button class="rounded-full p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                     :disabled="isSaving" @click="$emit('close')">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
@@ -19,6 +18,7 @@
                 </button>
             </div>
 
+            <div class="flex-1 overflow-y-auto px-4 py-4 sm:px-6">
             <!-- Inline Error Notification -->
             <div v-if="errorMessage" class="mb-4 rounded-md border border-red-300 bg-red-50 px-4 py-3">
                 <div class="flex items-start gap-2">
@@ -111,37 +111,61 @@
                     <Field>
                         <FieldLabel for="edit-foto">Foto Meteran <span
                                 class="text-xs text-muted-foreground">(opsional)</span></FieldLabel>
-                        <div class="flex items-center gap-3">
-                            <Input id="edit-foto" type="file" accept="image/jpeg,image/png,image/jpg"
-                                @change="handleFileChange" class="flex-1" />
-                            <Button v-if="hasFoto" variant="ghost" size="icon" @click="clearFoto" class="shrink-0">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                    stroke-linejoin="round">
-                                    <path d="M3 6h18" />
-                                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-                                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-                                </svg>
-                            </Button>
+                        <div class="space-y-3">
+                            <input
+                                id="edit-foto"
+                                ref="fotoInputRef"
+                                type="file"
+                                accept="image/*"
+                                capture="environment"
+                                class="sr-only"
+                                @change="handleFileChange"
+                            />
+                            <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    class="w-full touch-manipulation sm:w-auto"
+                                    :disabled="isSaving"
+                                    @click="triggerFotoPicker"
+                                >
+                                    {{ hasFoto ? 'Ganti Foto' : 'Ambil / Pilih Foto' }}
+                                </Button>
+                                <Button
+                                    v-if="hasFoto"
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    class="w-full touch-manipulation sm:w-auto"
+                                    :disabled="isSaving"
+                                    @click="clearFoto"
+                                >
+                                    Hapus Foto
+                                </Button>
+                            </div>
+                            <p class="text-xs text-muted-foreground">
+                                Semua format gambar dari kamera HP didukung. Maks. 100 MB.
+                            </p>
                         </div>
                         <!-- Preview foto -->
-                        <div v-if="previewUrl" class="mt-2">
+                        <div v-if="previewUrl" class="mt-3 overflow-hidden rounded-lg border bg-muted/20 p-2">
                             <ImageWithLoader :src="previewUrl" alt="Preview foto meteran"
-                                img-class="max-h-32 rounded-md border object-cover"
-                                skeleton-class="h-32 w-full rounded-md" />
+                                img-class="mx-auto max-h-56 w-full rounded-md object-contain sm:max-h-40"
+                                skeleton-class="h-56 w-full rounded-md sm:h-40" />
                         </div>
                     </Field>
 
                     <!-- Actions -->
-                    <Field orientation="horizontal" class="gap-2 pt-2">
-                        <Button variant="outline" size="sm" @click="$emit('close')" :disabled="isSaving">Batal</Button>
-                        <Button size="sm" @click="handleSave" :disabled="!isFormValid || isSaving">
+                    <Field orientation="horizontal" class="sticky bottom-0 gap-2 border-t bg-popover pt-4 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+                        <Button variant="outline" size="sm" class="flex-1 touch-manipulation" @click="$emit('close')" :disabled="isSaving">Batal</Button>
+                        <Button size="sm" class="flex-1 touch-manipulation" @click="handleSave" :disabled="!isFormValid || isSaving">
                             <Loader2 v-if="isSaving" class="mr-2 size-4 animate-spin" />
                             {{ isSaving ? 'Menyimpan...' : (isEdit ? 'Simpan Perubahan' : 'Simpan') }}
                         </Button>
                     </Field>
                 </FieldGroup>
             </FieldSet>
+            </div>
         </div>
     </div>
 </template>
@@ -171,7 +195,7 @@ import {
 import { toApiError } from '~/types/response-server'
 import type { PencatatanMeter, PencatatanMeterForm } from '~/types/pencatatan-meter'
 import type { Pelanggan } from '~/types/customers'
-import { formatCurrency } from '~/utils/utils'
+import { formatCurrency, getLocalDateString } from '~/utils/utils'
 
 const props = defineProps<{
     open: boolean
@@ -194,7 +218,9 @@ const { handleApiError } = useNotification()
 
 const isEdit = props.pencatatan !== null && props.pencatatan !== undefined
 
-const todayDate = ref<string>(new Date().toISOString().split('T')[0] ?? '')
+const todayDate = ref<string>(getLocalDateString())
+
+const fotoInputRef = ref<HTMLInputElement | null>(null)
 
 /** Inline error notification state - cleared automatically when user interacts with form */
 const errorMessage = ref<string>('')
@@ -258,8 +284,11 @@ const onPelangganChange = (pelangganId: number) => {
     }
 }
 
-const MAX_FOTO_SIZE = 10 * 1024 * 1024
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/jpg']
+const MAX_FOTO_SIZE = 100 * 1024 * 1024
+
+function triggerFotoPicker() {
+    fotoInputRef.value?.click()
+}
 
 // File handling
 const handleFileChange = (event: Event) => {
@@ -267,13 +296,8 @@ const handleFileChange = (event: Event) => {
     const file = target.files?.[0]
     if (!file) return
 
-    if (!ALLOWED_TYPES.includes(file.type)) {
-        toast.error('Format foto harus JPEG atau PNG')
-        target.value = ''
-        return
-    }
     if (file.size > MAX_FOTO_SIZE) {
-        toast.error('Ukuran foto maksimal 10 MB')
+        toast.error('Ukuran foto maksimal 100 MB')
         target.value = ''
         return
     }
@@ -289,6 +313,9 @@ const handleFileChange = (event: Event) => {
 const clearFoto = () => {
     form.foto_meteran = null
     previewUrl.value = null
+    if (fotoInputRef.value) {
+        fotoInputRef.value.value = ''
+    }
 }
 
 // Clear inline error when any form field changes
@@ -303,10 +330,16 @@ watch(
 watch(() => props.open, (isOpen) => {
     if (isOpen) {
         clearError()
+        todayDate.value = getLocalDateString()
+        if (fotoInputRef.value) {
+            fotoInputRef.value.value = ''
+        }
         if (props.pencatatan) {
             // Edit mode
             form.pelanggan_id = props.pencatatan.pelanggan_id
-            form.tanggal_pencatatan = props.pencatatan.tanggal_pencatatan?.split('T')[0] || ''
+            form.tanggal_pencatatan = props.pencatatan.tanggal_pencatatan?.split('T')[0]
+                || props.pencatatan.tanggal_pencatatan?.slice(0, 10)
+                || todayDate.value
             form.meter_awal = props.pencatatan.meter_awal
             form.meter_akhir = props.pencatatan.meter_akhir
             form.foto_meteran = null

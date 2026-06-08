@@ -1,6 +1,11 @@
 <template>
   <SidebarProvider>
-    <SidebarMobileRouteClose />
+    <ClientOnly>
+      <SidebarMobileRouteClose />
+      <template #fallback>
+        <span class="sr-only" aria-hidden="true" />
+      </template>
+    </ClientOnly>
     <div class="flex min-h-svh w-full min-w-0 overflow-x-hidden">
       <!-- Sidebar -->
       <Sidebar side="left" variant="sidebar" collapsible="offcanvas">
@@ -116,10 +121,18 @@
           <div class="flex items-center justify-between gap-2 min-w-0">
             <div class="flex min-w-0 items-center gap-2">
               <DashboardAvatar :user="user" size="md" />
-              <div class="flex min-w-0 flex-col group-data-[collapsible=icon]:hidden">
-                <span class="truncate text-sm font-medium">{{ sidebarUserName }}</span>
-                <span class="truncate text-xs text-muted-foreground">{{ sidebarUserEmail }}</span>
-              </div>
+              <ClientOnly>
+                <div class="flex min-w-0 flex-col group-data-[collapsible=icon]:hidden">
+                  <span class="truncate text-sm font-medium">{{ user?.nama || 'User' }}</span>
+                  <span class="truncate text-xs text-muted-foreground">{{ user?.email || '' }}</span>
+                </div>
+                <template #fallback>
+                  <div class="flex min-w-0 flex-col group-data-[collapsible=icon]:hidden">
+                    <span class="truncate text-sm font-medium">User</span>
+                    <span class="truncate text-xs text-muted-foreground" />
+                  </div>
+                </template>
+              </ClientOnly>
             </div>
             <button
               class="rounded-md p-1 hover:bg-muted shrink-0"
@@ -193,7 +206,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch } from 'vue'
 import {
   Sidebar,
   SidebarContent,
@@ -228,19 +241,6 @@ import {
 
 const route = useRoute()
 const { user, logout } = useAuth()
-
-/** Tunda tampilan data auth agar SSR = hydration (localStorage dibaca di plugin client). */
-const isClientReady = ref(false)
-onMounted(() => {
-  isClientReady.value = true
-})
-
-const sidebarUserName = computed(() =>
-  isClientReady.value ? (user.value?.nama || 'User') : 'User',
-)
-const sidebarUserEmail = computed(() =>
-  isClientReady.value ? (user.value?.email || '') : '',
-)
 
 const customerMenuOpen = ref(false)
 const accountMenuOpen = ref(false)

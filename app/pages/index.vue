@@ -12,12 +12,7 @@ definePageMeta({
   layout: 'blank',
 })
 
-const { login, isAuthenticated } = useAuth()
-
-// If already authenticated, redirect to dashboard
-if (isAuthenticated.value) {
-  await navigateTo('/dashboard', { replace: true })
-}
+const { login } = useAuth()
 
 const email = ref('')
 const password = ref('')

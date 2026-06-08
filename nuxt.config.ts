@@ -63,7 +63,9 @@ export default defineNuxtConfig({
   // API Laravel: set NUXT_PUBLIC_API_BASE_URL di .env (lihat .env.example)
   runtimeConfig: {
     public: {
-      apiBaseUrl: process.env.NUXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000/api'
+      apiBaseUrl: process.env.NUXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000/api',
+      /** Link invite grup WA tagihan, contoh: https://chat.whatsapp.com/xxxxx */
+      waGroupLink: process.env.NUXT_PUBLIC_WA_GROUP_LINK ?? '',
     }
   },
 
@@ -72,10 +74,8 @@ export default defineNuxtConfig({
       lintOnStart: true,
       emitWarning: true,
       emitError: true,
-      vite: {
-        failOnWarning: true,
-        failOnError: true,
-      },
+      /** Setara failOnWarning — warning di dev diperlakukan sebagai error */
+      emitWarningAsError: true,
     },
   },
 })

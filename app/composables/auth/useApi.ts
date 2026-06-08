@@ -2,6 +2,8 @@
  * API Client composable for making HTTP requests to the Laravel backend.
  * Automatically attaches the Sanctum Bearer token from auth storage.
  */
+import type { ResponseWithServer } from '~/types/response-server'
+
 export function useApi() {
     const config = useRuntimeConfig()
     const baseUrl = (config.public.apiBaseUrl as string)?.replace(/\/$/, '') ?? ''
@@ -50,7 +52,7 @@ export function useApi() {
         method: string,
         path: string,
         body?: Record<string, unknown> | FormData,
-    ): Promise<{ success: boolean; message: string; data: T }> {
+    ): Promise<ResponseWithServer<T>> {
         const url = `${baseUrl}${path}`
 
         const isFormData = body instanceof FormData
@@ -90,7 +92,11 @@ export function useApi() {
             throw { status: response.status, message: errorMessage, errors: json.errors || null, ...json }
         }
 
-        return json
+        return {
+            success: Boolean(json.success),
+            message: typeof json.message === 'string' ? json.message : '',
+            data: json.data as T,
+        }
     }
 
     return {

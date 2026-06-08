@@ -64,7 +64,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { toast } from 'vue-sonner'
 import WrapContent from '~/components/dashboard/WrapContent.vue'
 import ReusableTable from '~/components/dashboard/ReusableTable.vue'
@@ -77,7 +77,7 @@ import { formatCurrency, formatDate } from '~/utils/utils'
 
 const { getPembayaranByPeriode } = useBillingCore()
 
-const loading = ref(false)
+const loading = ref(true)
 const items = ref<Pembayaran[]>([])
 
 const now = new Date()
@@ -121,5 +121,5 @@ async function loadReport() {
   }
 }
 
-onMounted(() => loadReport())
+await loadReport()
 </script>

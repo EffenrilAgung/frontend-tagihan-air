@@ -20,5 +20,5 @@ watch(
 </script>
 
 <template>
-    <span class="sr-only" aria-hidden="true" />
+  <span class="sr-only" aria-hidden="true" />
 </template>

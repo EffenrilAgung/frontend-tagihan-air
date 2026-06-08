@@ -15,18 +15,23 @@
 
             <!-- Filter Dropdown -->
             <div v-if="filterable && filterOptions.length" class="flex flex-wrap items-center gap-2">
-                <Select v-for="filter in filterOptions" :key="filter.key" :model-value="getFilterValue(filter.key)"
-                    @update:model-value="(val) => setFilterValue(filter.key, String(val ?? ''))">
-                    <SelectTrigger class="h-9 w-full sm:w-45">
-                        <SelectValue :placeholder="filter.placeholder || `Filter ${filter.label}`" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">Semua {{ filter.label }}</SelectItem>
-                        <SelectItem v-for="option in filter.options" :key="option.value" :value="String(option.value)">
-                            {{ option.label }}
-                        </SelectItem>
-                    </SelectContent>
-                </Select>
+                <ClientOnly v-for="filter in filterOptions" :key="filter.key">
+                    <Select :model-value="getFilterValue(filter.key)"
+                        @update:model-value="(val) => setFilterValue(filter.key, String(val ?? ''))">
+                        <SelectTrigger class="h-9 w-full sm:w-45">
+                            <SelectValue :placeholder="filter.placeholder || `Filter ${filter.label}`" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Semua {{ filter.label }}</SelectItem>
+                            <SelectItem v-for="option in filter.options" :key="option.value" :value="String(option.value)">
+                                {{ option.label }}
+                            </SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <template #fallback>
+                        <div class="h-9 w-full rounded-md border border-input bg-muted/40 sm:w-45" />
+                    </template>
+                </ClientOnly>
             </div>
         </div>
 
@@ -92,26 +97,43 @@
             </div>
 
             <!-- Mobile Card View -->
-            <div class="block md:hidden divide-y">
-                <div v-for="(row, rowIndex) in paginatedData" :key="rowIndex"
-                    class="p-4 space-y-2 hover:bg-muted/50 transition-colors cursor-pointer"
-                    @click="$emit('rowClick', row)">
-                    <div v-for="col in visibleMobileColumns" :key="col.key" class="flex items-start gap-2"
-                        :class="col.hideOnMobile ? 'hidden' : ''">
-                        <span class="text-xs text-muted-foreground shrink-0 min-w-[90px] font-medium">
-                            {{ col.label }}
-                        </span>
-                        <span class="text-sm text-right flex-1 break-words">
-                            <slot :name="`cell-${col.key}`" :row="row" :value="resolveNestedValue(row, col.key)"
-                                :column="col">
-                                {{ formatCellValue(resolveNestedValue(row, col.key), col) }}
-                            </slot>
-                        </span>
-                    </div>
+            <div class="block space-y-3 md:hidden">
+                <div
+                    v-for="(row, rowIndex) in paginatedData"
+                    :key="rowIndex"
+                    class="overflow-hidden rounded-xl border bg-card shadow-sm"
+                    @click="$emit('rowClick', row)"
+                >
+                    <slot name="mobile-card" :row="row" :row-index="rowIndex">
+                        <div class="space-y-2 p-4">
+                            <div
+                                v-for="col in visibleMobileColumns"
+                                :key="col.key"
+                                class="flex items-start justify-between gap-3"
+                                :class="col.hideOnMobile ? 'hidden' : ''"
+                            >
+                                <span class="shrink-0 text-xs font-medium text-muted-foreground">
+                                    {{ col.label }}
+                                </span>
+                                <span class="min-w-0 flex-1 text-right text-sm font-medium wrap-break-word">
+                                    <slot
+                                        :name="`cell-${col.key}`"
+                                        :row="row"
+                                        :value="resolveNestedValue(row, col.key)"
+                                        :column="col"
+                                    >
+                                        {{ formatCellValue(resolveNestedValue(row, col.key), col) }}
+                                    </slot>
+                                </span>
+                            </div>
+                        </div>
+                    </slot>
                     <!-- Row actions slot for mobile -->
                     <slot name="mobile-actions" :row="row">
-                        <div v-if="$slots['cell-actions'] || actionsLabel"
-                            class="flex items-center justify-end gap-2 pt-2 border-t mt-2">
+                        <div
+                            v-if="$slots['cell-actions'] || actionsLabel"
+                            class="flex items-center justify-end gap-2 border-t bg-muted/20 px-4 py-3"
+                        >
                             <slot name="cell-actions" :row="row" :value="row" :column="{ key: 'actions' }" />
                         </div>
                     </slot>
@@ -132,17 +154,16 @@
                 </span>
                 <div v-if="pageSizeOptions.length" class="flex items-center gap-1">
                     <span class="hidden sm:inline">|</span>
-                    <Select :model-value="String(pageSizeModel)"
-                        @update:model-value="(val) => pageSizeModel = Number(val)">
-                        <SelectTrigger class="h-8 w-[70px] text-xs">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem v-for="opt in pageSizeOptions" :key="opt" :value="String(opt)">
-                                {{ opt }}
-                            </SelectItem>
-                        </SelectContent>
-                    </Select>
+                    <select
+                        :value="String(pageSizeModel)"
+                        class="h-8 w-[70px] rounded-md border border-input bg-background px-2 text-xs"
+                        aria-label="Jumlah baris per halaman"
+                        @change="pageSizeModel = Number(($event.target as HTMLSelectElement).value)"
+                    >
+                        <option v-for="opt in pageSizeOptions" :key="opt" :value="String(opt)">
+                            {{ opt }}
+                        </option>
+                    </select>
                 </div>
             </div>
 

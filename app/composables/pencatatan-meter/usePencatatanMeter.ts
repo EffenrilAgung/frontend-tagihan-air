@@ -59,7 +59,8 @@ export const usePencatatanMeterCore = () => {
             formData.append('foto_meteran', form.foto_meteran)
         }
 
-        const response = await api.put<PencatatanMeter>(`/pencatatan-meter/${id}`, formData)
+        formData.append('_method', 'PUT')
+        const response = await api.post<PencatatanMeter>(`/pencatatan-meter/${id}`, formData)
 
         if (!response.success || !response.data) {
             throw { ...response, message: response.message || 'Gagal memperbarui pencatatan meter' }
