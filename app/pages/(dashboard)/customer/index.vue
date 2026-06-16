@@ -97,6 +97,7 @@
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue'
 import { toast } from 'vue-sonner'
+import { devLog } from '~/utils/dev-log'
 import { Loader2Icon } from 'lucide-vue-next'
 import WrapContent from '~/components/dashboard/WrapContent.vue';
 import Button from '~/components/ui/button/Button.vue';
@@ -223,7 +224,7 @@ const confirmDelete = async () => {
     toast.success(`Pelanggan "${pelanggan.nama}" berhasil dihapus`);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Gagal menghapus pelanggan';
-    console.error('Gagal menghapus pelanggan:', error);
+    devLog('Gagal menghapus pelanggan:', error);
     toast.error(message);
   } finally {
     isDeleting.value = false;
@@ -247,7 +248,7 @@ onMounted(async () => {
     const data = await getCustomers()
     pelanggans.value = data
   } catch (error) {
-    console.error('Gagal memuat data:', error)
+    devLog('Gagal memuat data:', error)
     toast.error('Gagal memuat data pelanggan')
   } finally {
     loading.value = false

@@ -174,6 +174,7 @@
 import { ref, reactive, computed, watch } from 'vue'
 import { Loader2 } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
+import { devLog } from '~/utils/dev-log'
 import ImageWithLoader from '@/components/ui/image/ImageWithLoader.vue'
 import {
     Field,
@@ -391,7 +392,7 @@ const handleSave = async () => {
 
         emit('saved', result)
     } catch (error: unknown) {
-        console.error('Gagal menyimpan pencatatan:', error)
+        devLog('Gagal menyimpan pencatatan:', error)
 
         handleApiError(error, 'Terjadi kesalahan saat menyimpan data')
 

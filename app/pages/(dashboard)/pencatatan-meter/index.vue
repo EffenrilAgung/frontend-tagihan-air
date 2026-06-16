@@ -272,6 +272,7 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, computed } from 'vue'
 import { toast } from 'vue-sonner'
+import { devLog } from '~/utils/dev-log'
 import { Loader2Icon, MessageCircle } from 'lucide-vue-next'
 import WrapContent from '~/components/dashboard/WrapContent.vue';
 import Button from '~/components/ui/button/Button.vue';
@@ -367,7 +368,7 @@ const openEdit = async (id: number) => {
         selectedPencatatan.value = response.data;
         showPopup.value = true;
     } catch (error) {
-        console.error('Gagal memuat data pencatatan untuk edit:', error);
+        devLog('Gagal memuat data pencatatan untuk edit:', error);
         toast.error('Gagal memuat data pencatatan meter');
     }
 };
@@ -424,7 +425,7 @@ const confirmDelete = async () => {
         toast.success('Pencatatan meter berhasil dihapus');
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Gagal menghapus pencatatan meter';
-        console.error('Gagal menghapus pencatatan:', error);
+        devLog('Gagal menghapus pencatatan:', error);
         toast.error(message);
     } finally {
         isDeleting.value = false;
@@ -465,7 +466,7 @@ onMounted(async () => {
         const data = await getPencatatanMeter()
         pencatatanList.value = data
     } catch (error) {
-        console.error('Gagal memuat data:', error)
+        devLog('Gagal memuat data:', error)
         toast.error('Gagal memuat data pencatatan meter');
     } finally {
         loading.value = false

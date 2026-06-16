@@ -87,6 +87,7 @@
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue'
 import { toast } from 'vue-sonner'
+import { devLog } from '~/utils/dev-log'
 import { Loader2Icon } from 'lucide-vue-next'
 import WrapContent from '~/components/dashboard/WrapContent.vue';
 import Button from '~/components/ui/button/Button.vue';
@@ -205,7 +206,7 @@ const confirmDelete = async () => {
         toast.success(`Tarif "${tarif.nama_kategori}" berhasil dihapus`);
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Gagal menghapus tarif';
-        console.error('Gagal menghapus tarif:', error);
+        devLog('Gagal menghapus tarif:', error);
         toast.error(message);
     } finally {
         isDeleting.value = false;
@@ -224,7 +225,7 @@ onMounted(async () => {
         const data = await getTarif()
         tarifs.value = data
     } catch (error) {
-        console.error('Gagal memuat data tarif:', error)
+        devLog('Gagal memuat data tarif:', error)
         toast.error('Gagal memuat data tarif')
     } finally {
         loading.value = false

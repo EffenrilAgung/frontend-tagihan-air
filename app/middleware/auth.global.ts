@@ -1,3 +1,5 @@
+import { hasStoredAuth } from '~/utils/auth-storage'
+
 /**
  * Global auth middleware.
  *
@@ -7,15 +9,13 @@
  *   redirected to /dashboard.
  */
 export default defineNuxtRouteMiddleware((to, _from) => {
-    // Skip middleware during SSR for auth check since localStorage isn't available
+    // Skip middleware during SSR — auth state only available on client
     if (import.meta.server) {
         return
     }
 
-    const token = localStorage.getItem('auth_token')
-    const isAuthenticated = !!token
+    const isAuthenticated = hasStoredAuth()
 
-    // Protected routes: all routes under /dashboard (or other app routes)
     const protectedRoutePatterns = [
         '/dashboard',
         '/customer',
@@ -30,12 +30,10 @@ export default defineNuxtRouteMiddleware((to, _from) => {
         to.path.startsWith(pattern),
     )
 
-    // Redirect unauthenticated users away from protected routes
     if (!isAuthenticated && isProtectedRoute) {
         return navigateTo('/', { replace: true })
     }
 
-    // Redirect authenticated users away from the login page
     if (isAuthenticated && to.path === '/') {
         return navigateTo('/dashboard', { replace: true })
     }

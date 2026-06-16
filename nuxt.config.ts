@@ -1,5 +1,8 @@
 import tailwindcss from "@tailwindcss/vite";
 
+const apiBase = process.env.NUXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000/api'
+const apiOrigin = apiBase.replace(/\/api\/?$/, '').replace(/\/+$/, '')
+
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   compatibilityDate: '2026-04-22',
@@ -67,6 +70,28 @@ export default defineNuxtConfig({
       /** Link invite grup WA tagihan, contoh: https://chat.whatsapp.com/xxxxx */
       waGroupLink: process.env.NUXT_PUBLIC_WA_GROUP_LINK ?? '',
     }
+  },
+
+  routeRules: {
+    '/**': {
+      headers: {
+        'X-Frame-Options': 'DENY',
+        'X-Content-Type-Options': 'nosniff',
+        'Referrer-Policy': 'strict-origin-when-cross-origin',
+        'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+        'Content-Security-Policy': [
+          "default-src 'self'",
+          "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+          "style-src 'self' 'unsafe-inline'",
+          "img-src 'self' data: blob: " + apiOrigin,
+          "connect-src 'self' " + apiOrigin + " ws://localhost:3000 ws://127.0.0.1:3000 ws://localhost:24678",
+          "font-src 'self' data:",
+          "frame-ancestors 'none'",
+          "base-uri 'self'",
+          "form-action 'self'",
+        ].join('; '),
+      },
+    },
   },
 
   eslint: {

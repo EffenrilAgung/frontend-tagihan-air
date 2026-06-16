@@ -3,6 +3,7 @@
  * Automatically attaches the Sanctum Bearer token from auth storage.
  */
 import type { ResponseWithServer } from '~/types/response-server'
+import { getStoredToken } from '~/utils/auth-storage'
 
 export function useApi() {
     const config = useRuntimeConfig()
@@ -15,13 +16,10 @@ export function useApi() {
     }
 
     /**
-     * Get the auth token from localStorage
+     * Get the auth token from sessionStorage
      */
     function getToken(): string | null {
-        if (import.meta.client) {
-            return localStorage.getItem('auth_token')
-        }
-        return null
+        return getStoredToken()
     }
 
     /**
@@ -73,23 +71,51 @@ export function useApi() {
             options.body = isFormData ? body : JSON.stringify(body)
         }
 
-        const response = await fetch(url, options)
+        let response: Response
+        try {
+            response = await fetch(url, options)
+        } catch {
+            throw {
+                status: 0,
+                message: 'Server backend tidak merespon. Pastikan Laravel berjalan dengan perintah: php artisan serve --port=8000',
+                errors: null,
+            }
+        }
+
+        const contentType = response.headers.get('content-type') ?? ''
+        const isJson = contentType.includes('application/json')
 
         let json: Record<string, unknown>
         try {
+            if (!isJson) {
+                throw new Error('non-json')
+            }
             json = await response.json()
         } catch {
+            if (response.status === 401) {
+                throw {
+                    status: 401,
+                    message: 'Sesi login telah berakhir. Silakan logout lalu login kembali.',
+                    errors: null,
+                }
+            }
+
             throw {
                 status: response.status,
-                message: `Respons server tidak valid (${response.status})`,
+                message: response.status === 0 || !response.ok
+                    ? 'Server backend tidak merespon. Pastikan Laravel berjalan dengan perintah: php artisan serve --port=8000'
+                    : `Respons server tidak valid (${response.status})`,
                 errors: null,
             }
         }
 
         if (!response.ok) {
-            // Laravel validation errors: { message, errors: { field: [...] } }
-            const errorMessage = json.message || `Request failed with status ${response.status}`
-            throw { status: response.status, message: errorMessage, errors: json.errors || null, ...json }
+            const rawMessage = typeof json.message === 'string' ? json.message : ''
+            const safeMessage = response.status >= 500
+                ? 'Terjadi kesalahan pada server.'
+                : rawMessage || `Request failed with status ${response.status}`
+
+            throw { status: response.status, message: safeMessage, errors: json.errors || null }
         }
 
         return {

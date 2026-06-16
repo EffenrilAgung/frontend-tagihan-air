@@ -122,7 +122,8 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { Loader2Icon } from 'lucide-vue-next'
-import { toApiError } from '~/types/response-server'
+import { toApiError, formatApiErrorMessage } from '~/types/response-server'
+import { devLog } from '~/utils/dev-log'
 import type { PembayaranForm, UnpaidBill, Pembayaran } from '~/types/billing'
 import { formatCurrency, formatDate } from '~/utils/utils'
 import Button from '~/components/ui/button/Button.vue'
@@ -169,10 +170,10 @@ const form = ref<PembayaranForm>({
 })
 
 // Reset form when dialog opens
-watch(() => props.open, (isOpen) => {
-    if (isOpen && props.selectedBill) {
+watch(() => [props.open, props.selectedBill] as const, ([isOpen, bill]) => {
+    if (isOpen && bill) {
         form.value = {
-            pencatatan_meter_id: props.selectedBill.id,
+            pencatatan_meter_id: bill.id,
             tanggal_bayar: getToday(),
             metode_bayar: 'tunai',
             catatan: '',
@@ -180,7 +181,7 @@ watch(() => props.open, (isOpen) => {
         errorMessage.value = ''
         fieldErrors.value = []
     }
-})
+}, { immediate: true })
 
 // Auto-clear errors when form changes
 watch(form, () => {
@@ -189,7 +190,10 @@ watch(form, () => {
 }, { deep: true })
 
 const handleSave = async () => {
-    if (!form.value.pencatatan_meter_id || !form.value.tanggal_bayar || !form.value.metode_bayar) return
+    if (!form.value.pencatatan_meter_id || !form.value.tanggal_bayar || !form.value.metode_bayar) {
+        errorMessage.value = 'Data tagihan belum lengkap. Tutup popup lalu coba lagi.'
+        return
+    }
 
     saving.value = true
     errorMessage.value = ''
@@ -199,16 +203,14 @@ const handleSave = async () => {
         const result = await props.onProcess(form.value)
         emit('saved', result)
     } catch (error: unknown) {
-        console.error('Gagal memproses pembayaran:', error)
+        devLog('Gagal memproses pembayaran:', error)
 
         const apiError = toApiError(error)
         if (apiError.errors && typeof apiError.errors === 'object') {
             errorMessage.value = apiError.message || 'Validasi gagal'
             fieldErrors.value = Object.values(apiError.errors).flat()
-        } else if (apiError.message) {
-            errorMessage.value = apiError.message
         } else {
-            errorMessage.value = 'Terjadi kesalahan saat memproses pembayaran'
+            errorMessage.value = formatApiErrorMessage(error, 'Terjadi kesalahan saat memproses pembayaran')
         }
     } finally {
         saving.value = false

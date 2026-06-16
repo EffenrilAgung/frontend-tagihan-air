@@ -2,17 +2,18 @@ import type { Ref } from 'vue'
 import { toast } from 'vue-sonner'
 import type { User, AuthState, LoginResponse, ProfileUpdateForm } from '../../types/users'
 import { useApi } from './useApi'
+import { clearStoredAuth, setStoredToken, setStoredUser } from '~/utils/auth-storage'
 
 /**
  * Composable for managing user authentication state.
  *
- * - Stores the Sanctum token in localStorage for persistence across refreshes.
+ * - Stores the Sanctum token in sessionStorage (tab-scoped, cleared on browser close).
  * - Provides login(), logout(), and reactive user/token/isAuthenticated refs.
  */
 export function useAuth() {
     // ---- Reactive state ----
     // Inisialisasi null di server & client agar HTML SSR cocok saat hydration.
-    // localStorage dibaca di plugin auth.client.ts setelah mount.
+    // sessionStorage dibaca di plugin auth.client.ts setelah mount.
     const user: Ref<User | null> = useState<User | null>('auth_user', () => null)
 
     const token: Ref<string | null> = useState<string | null>('auth_token', () => null)
@@ -24,25 +25,24 @@ export function useAuth() {
         token.value = state.token
         user.value = state.user
         if (import.meta.client) {
-            localStorage.setItem('auth_token', state.token ?? '')
-            localStorage.setItem('auth_user', JSON.stringify(state.user))
+            if (state.token) {
+                setStoredToken(state.token)
+            }
+            setStoredUser(JSON.stringify(state.user))
         }
     }
 
     function persistUser(updated: User): void {
         user.value = updated
         if (import.meta.client) {
-            localStorage.setItem('auth_user', JSON.stringify(updated))
+            setStoredUser(JSON.stringify(updated))
         }
     }
 
     function clearAuth(): void {
         token.value = null
         user.value = null
-        if (import.meta.client) {
-            localStorage.removeItem('auth_token')
-            localStorage.removeItem('auth_user')
-        }
+        clearStoredAuth()
     }
 
     // ---- API calls ----

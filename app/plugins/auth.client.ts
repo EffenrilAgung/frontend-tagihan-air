@@ -1,19 +1,20 @@
 /**
- * Hydrate auth dari localStorage (client-only), lalu sinkronkan profil dari API.
- * Membaca storage di plugin — bukan di useState initializer — agar tidak hydration mismatch.
+ * Hydrate auth dari sessionStorage (client-only), lalu sinkronkan profil dari API.
  */
+import { getStoredToken, getStoredUserRaw } from '~/utils/auth-storage'
+
 export default defineNuxtPlugin(() => {
-    const storedToken = localStorage.getItem('auth_token')
+    const storedToken = getStoredToken()
     const { user, token, fetchProfile } = useAuth()
 
     if (storedToken) {
         token.value = storedToken
-        const rawUser = localStorage.getItem('auth_user')
+        const rawUser = getStoredUserRaw()
         if (rawUser) {
             try {
                 user.value = JSON.parse(rawUser) as import('~/types/users').User
             } catch {
-                localStorage.removeItem('auth_user')
+                sessionStorage.removeItem('auth_user')
             }
         }
         fetchProfile()

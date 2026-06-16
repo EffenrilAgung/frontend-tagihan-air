@@ -1,5 +1,21 @@
 <template>
     <div>
+        <!-- Backend offline banner -->
+        <div v-if="!apiOnline" class="mb-4 rounded-md border border-amber-300 bg-amber-50 px-4 py-3">
+            <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <p class="text-sm text-amber-800">
+                    Server backend tidak tersedia. Jalankan
+                    <code class="rounded bg-amber-100 px-1 py-0.5 text-xs">php artisan serve --port=8000</code>
+                    dari folder <code class="rounded bg-amber-100 px-1 py-0.5 text-xs">backend-tagihan-air</code>.
+                </p>
+                <Button variant="outline" size="sm" class="shrink-0 border-amber-400 text-amber-800 hover:bg-amber-100"
+                    :disabled="checkingApi" @click="recheckApi">
+                    <Loader2Icon v-if="checkingApi" class="mr-2 size-4 animate-spin" />
+                    Coba lagi
+                </Button>
+            </div>
+        </div>
+
         <!-- Tabs: horizontal scroll on narrow screens -->
         <div class="mb-4 border-b sm:mb-6">
             <div class="-mx-1 flex gap-1 overflow-x-auto px-1 pb-px sm:gap-6">
@@ -57,14 +73,14 @@
                         </template>
                         <template #cell-actions="{ row }">
                             <Button size="sm" class="bg-emerald-500 hover:bg-emerald-600 text-white"
-                                @click.stop="openBayar(row as any)">
+                                :disabled="!apiOnline" @click.stop="openBayar(row as any)">
                                 Bayar
                             </Button>
                         </template>
                         <template #mobile-actions="{ row }">
                             <div class="flex items-center justify-end gap-2 pt-2 border-t mt-2">
                                 <Button size="sm" class="bg-emerald-500 hover:bg-emerald-600 text-white"
-                                    @click.stop="openBayar(row as any)">
+                                    :disabled="!apiOnline" @click.stop="openBayar(row as any)">
                                     Bayar
                                 </Button>
                             </div>
@@ -187,10 +203,11 @@ import Skeleton from '~/components/ui/skeleton/Skeleton.vue'
 import Input from '~/components/ui/input/Input.vue'
 import ReusableTable from '~/components/dashboard/ReusableTable.vue'
 import type { TableColumn } from '~/components/dashboard/ReusableTable.vue'
-import { toApiError } from '~/types/response-server'
+import { toApiError, formatApiErrorMessage, isNetworkError } from '~/types/response-server'
 import type { Pembayaran, PembayaranForm, UnpaidBill } from '~/types/billing'
-import PopupBayar from './components/PopupBayar.vue'
+import { PopupBayar } from './components/PopupBayar.async'
 import { useBillingCore } from '~/composables/billing/useBilling'
+import { useApiHealth } from '~/composables/auth/useApiHealth'
 import { formatCurrency, formatDate } from '~/utils/utils'
 import {
     AlertDialog,
@@ -231,6 +248,17 @@ const showDeleteAlert = ref(false)
 const pembayaranToDelete = ref<Pembayaran | null>(null)
 
 const { getPembayaran, createPembayaran, deletePembayaran, getUnpaidBills, getPembayaranByPeriode } = useBillingCore()
+const { isOnline: apiOnline, checking: checkingApi, checkHealth } = useApiHealth()
+
+const recheckApi = async () => {
+    const online = await checkHealth()
+    if (online) {
+        toast.success('Koneksi backend berhasil dipulihkan')
+        await Promise.all([loadUnpaidBills(), loadPaymentHistory()])
+    } else {
+        toast.error('Server backend masih tidak merespon')
+    }
+}
 
 // Columns for unpaid bills table
 const unpaidColumns: TableColumn[] = [
@@ -257,7 +285,13 @@ const historyColumns: TableColumn[] = [
 ]
 
 // Payment popup
-const openBayar = (bill: UnpaidBill) => {
+const openBayar = async (bill: UnpaidBill) => {
+    const online = await checkHealth()
+    if (!online) {
+        toast.error('Server backend tidak tersedia. Tidak dapat memproses pembayaran.')
+        return
+    }
+
     selectedBill.value = bill
     showPopupBayar.value = true
 }
@@ -340,8 +374,11 @@ const loadPaymentHistory = async () => {
     loadingHistory.value = true
     try {
         pembayaranList.value = await getPembayaran()
-    } catch {
-        toast.error('Gagal memuat riwayat pembayaran')
+    } catch (error: unknown) {
+        if (isNetworkError(error)) {
+            apiOnline.value = false
+        }
+        toast.error(formatApiErrorMessage(error, 'Gagal memuat riwayat pembayaran'))
     } finally {
         loadingHistory.value = false
     }
@@ -351,8 +388,11 @@ const loadUnpaidBills = async () => {
     loadingUnpaid.value = true
     try {
         unpaidBills.value = await getUnpaidBills()
-    } catch {
-        toast.error('Gagal memuat tagihan belum dibayar')
+    } catch (error: unknown) {
+        if (isNetworkError(error)) {
+            apiOnline.value = false
+        }
+        toast.error(formatApiErrorMessage(error, 'Gagal memuat tagihan belum dibayar'))
     } finally {
         loadingUnpaid.value = false
     }
@@ -366,6 +406,7 @@ watch(showDeleteAlert, (isOpen) => {
 })
 
 onMounted(async () => {
+    await checkHealth()
     await loadUnpaidBills()
     await loadPaymentHistory()
 })

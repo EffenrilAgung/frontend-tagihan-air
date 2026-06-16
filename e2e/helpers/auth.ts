@@ -15,7 +15,7 @@ export function getE2eCredentials() {
   return { email, password }
 }
 
-/** Seed localStorage auth agar halaman protected bisa diuji tanpa form login. */
+/** Seed sessionStorage auth agar halaman protected bisa diuji tanpa form login. */
 export async function seedAuthenticatedSession(page: Page): Promise<void> {
   const { email, password } = getE2eCredentials()
   const apiBase = process.env.NUXT_PUBLIC_API_BASE_URL ?? DEFAULT_API_BASE
@@ -41,8 +41,8 @@ export async function seedAuthenticatedSession(page: Page): Promise<void> {
   }
 
   await page.addInitScript(({ token, user }) => {
-    localStorage.setItem('auth_token', token)
-    localStorage.setItem('auth_user', JSON.stringify(user))
+    sessionStorage.setItem('auth_token', token)
+    sessionStorage.setItem('auth_user', JSON.stringify(user))
   }, {
     token: json.data.token,
     user: json.data.user,
